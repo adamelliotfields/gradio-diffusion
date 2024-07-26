@@ -87,7 +87,7 @@ with gr.Blocks(
             label="Prompt",
             show_label=False,
             lines=2,
-            placeholder="A painting of a sunset over a mountain",
+            placeholder="corgi, at the beach, cute",
             value=None,
             elem_id="prompt",
         )
@@ -105,7 +105,7 @@ with gr.Blocks(
                     negative_prompt = gr.Textbox(
                         label="Negative Prompt",
                         lines=1,
-                        placeholder="ugly, bad art, low quality",
+                        placeholder="ugly",
                         value="",
                     )
 
