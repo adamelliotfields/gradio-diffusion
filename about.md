@@ -52,4 +52,6 @@ All models use [madebyollin/taesd](https://huggingface.co/madebyollin/taesd) for
 - [ ] Support LoRA
 - [ ] Add VAE radio
 - [ ] Add styles
+- [ ] CLIP skip
+- [ ] [Hires fix](https://comfyanonymous.github.io/ComfyUI_examples/2_pass_txt2img/)
 - [ ] Badges
