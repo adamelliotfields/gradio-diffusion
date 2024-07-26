@@ -4,6 +4,7 @@ diffusers
 hf-transfer
 gradio==4.39.0
 ruff
+scipy  # for LMS scheduler
 spaces
 torch
 torchvision

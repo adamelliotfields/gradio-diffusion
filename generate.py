@@ -74,7 +74,7 @@ class Loader:
         if karras:
             scheduler_kwargs["use_karras_sigmas"] = True
 
-        if scheduler == "PNDM":
+        if scheduler == "PNDM" or scheduler == "Euler a":
             del scheduler_kwargs["use_karras_sigmas"]
 
         variant = (

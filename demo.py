@@ -20,10 +20,6 @@ def read_file(path: str) -> str:
         return file.read()
 
 
-def toggle_json(checkbox: gr.Checkbox, json: gr.JSON) -> None:
-    json.visible = checkbox
-
-
 # don't request a GPU if input is bad
 def generate_btn_click(*args, **kwargs):
     start = time.perf_counter()
