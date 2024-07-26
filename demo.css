@@ -1,0 +1,59 @@
+.accordion {
+  background-color: transparent;
+}
+.accordion > button {
+  justify-content: flex-start;
+}
+.accordion > button > span:first-child {
+  width: auto;
+  margin-right: 4px;
+}
+
+.gr-group div {
+  gap: 0px;
+}
+
+.tabs, .tabitem, .tab-nav, .tab-nav > .selected {
+  border-width: 0px;
+}
+
+#about {
+  padding: 20px 24px;
+}
+
+#gallery {
+  background-color: var(--bg);
+}
+#gallery > div:nth-child(2) {
+  overflow-y: hidden;
+}
+.dark #gallery {
+  background-color: var(--background-fill-primary);
+}
+
+#header {
+  display: flex;
+  align-items: center;
+}
+#header > svg {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-left: 0.5rem;
+  fill: #047857 !important;
+  animation: spin 3s linear infinite reverse;
+}
+#header > svg:is(.dark *) {
+  fill: #10b981 !important;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+#menu-tabs {
+  margin-top: 12px;
+}
+
+#random-seed > button {
+  margin-right: 8px;
+}
