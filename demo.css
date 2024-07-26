@@ -54,6 +54,13 @@
   margin-top: 12px;
 }
 
+#prompt {
+  background-color: var(--bg);
+}
+.dark #prompt {
+  background-color: var(--background-fill-primary);
+}
+
 #random-seed > button {
   margin-right: 8px;
 }

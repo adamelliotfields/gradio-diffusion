@@ -77,21 +77,19 @@ with gr.Blocks(
         interactive=False,
         elem_id="gallery",
     )
-
-    with gr.Group():
-        prompt = gr.Textbox(
-            label="Prompt",
-            show_label=False,
-            lines=2,
-            placeholder="corgi, at the beach, cute",
-            value=None,
-            elem_id="prompt",
-        )
-        generate_btn = gr.Button("Generate", variant="primary", elem_classes=[])
+    prompt = gr.Textbox(
+        label="Prompt",
+        show_label=False,
+        lines=2,
+        placeholder="corgi, at the beach, cute",
+        value=None,
+        elem_id="prompt",
+    )
+    generate_btn = gr.Button("Generate", variant="primary", elem_classes=[])
 
     with gr.Accordion(
         label="Menu",
-        open=True,
+        open=False,
         elem_id="menu",
         elem_classes=["accordion"],
     ):
@@ -193,6 +191,7 @@ with gr.Blocks(
     generate_btn.click(
         generate_btn_click,
         api_name="generate",
+        concurrency_limit=5,
         outputs=[output_images],
         inputs=[
             prompt,
