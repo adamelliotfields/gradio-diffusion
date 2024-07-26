@@ -1,5 +1,5 @@
 () =>{
-  const header = document.querySelector("header");
+  const header = document.querySelector("#intro");
   const menu = document.querySelector("#menu");
   const menuButton = menu.querySelector("button");
   const menuSpan = menuButton.querySelector("span:first-child");

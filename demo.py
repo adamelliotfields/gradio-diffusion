@@ -68,7 +68,7 @@ with gr.Blocks(
         section_header_text_weight=500,
     ),
 ) as demo:
-    gr.HTML(read_file("header.html"))
+    gr.HTML(read_file("intro.html"))
     output_images = gr.Gallery(
         height=320,
         label="Output",

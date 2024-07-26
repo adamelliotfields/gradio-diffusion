@@ -31,11 +31,11 @@
   background-color: var(--background-fill-primary);
 }
 
-#header {
+#intro {
   display: flex;
   align-items: center;
 }
-#header > svg {
+#intro > svg {
   display: inline-block;
   width: 1.75rem;
   height: 1.75rem;
@@ -43,7 +43,7 @@
   fill: #047857 !important;
   animation: spin 3s linear infinite reverse;
 }
-#header > svg:is(.dark *) {
+#intro > svg:is(.dark *) {
   fill: #10b981 !important;
 }
 @keyframes spin {
