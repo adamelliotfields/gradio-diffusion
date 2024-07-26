@@ -1,0 +1,9 @@
+extend-include = ["*.ipynb"]
+
+line-length = 99
+
+[lint]
+ignore = ["F401"]
+
+[lint.per-file-ignores]
+"*.ipynb" = ["E402"]
