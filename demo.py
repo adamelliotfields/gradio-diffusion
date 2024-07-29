@@ -34,7 +34,7 @@ def generate_btn_click(*args, **kwargs):
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
 
-    images = generate(*args, **kwargs)
+    images = generate(*args, **kwargs, Error=gr.Error)
     end = time.perf_counter()
     diff = end - start
     gr.Info(f"Generated {len(images)} images in {diff:.2f}s")
@@ -42,6 +42,7 @@ def generate_btn_click(*args, **kwargs):
 
 
 with gr.Blocks(
+    head=read_file("head.html"),
     css="./demo.css",
     js="./demo.js",
     theme=gr.themes.Default(
@@ -59,22 +60,17 @@ with gr.Blocks(
     ).set(
         block_background_fill=gr.themes.colors.gray.c50,
         block_background_fill_dark=gr.themes.colors.gray.c900,
-        block_border_width="0px",
-        block_border_width_dark="0px",
         block_shadow="0 0 #0000",
         block_shadow_dark="0 0 #0000",
-        block_title_text_weight=500,
-        form_gap_width="0px",
-        section_header_text_weight=500,
     ),
 ) as demo:
     gr.HTML(read_file("intro.html"))
     output_images = gr.Gallery(
-        height=320,
         label="Output",
         show_label=False,
-        columns=4,
+        columns=1,
         interactive=False,
+        show_share_button=False,
         elem_id="gallery",
     )
     prompt = gr.Textbox(
@@ -83,7 +79,6 @@ with gr.Blocks(
         lines=2,
         placeholder="corgi, at the beach, cute",
         value=None,
-        elem_id="prompt",
     )
     generate_btn = gr.Button("Generate", variant="primary", elem_classes=[])
 
@@ -93,7 +88,7 @@ with gr.Blocks(
         elem_id="menu",
         elem_classes=["accordion"],
     ):
-        with gr.Tabs(elem_id="menu-tabs"):
+        with gr.Tabs():
             with gr.TabItem("⚙️ Settings"):
                 with gr.Group():
                     negative_prompt = gr.Textbox(
@@ -116,6 +111,7 @@ with gr.Blocks(
                             value="1:1",
                             filterable=False,
                         )
+                        seed = gr.Number(label="Seed", value=0)
 
                     with gr.Row():
                         guidance_scale = gr.Slider(
@@ -123,7 +119,7 @@ with gr.Blocks(
                             minimum=1.0,
                             maximum=15.0,
                             step=0.1,
-                            value=7,
+                            value=7.5,
                         )
                         inference_steps = gr.Slider(
                             label="Inference Steps",
@@ -133,57 +129,67 @@ with gr.Blocks(
                             value=30,
                         )
 
-                    with gr.Column():
-                        seed = gr.Number(label="Seed", value=0)
-                        with gr.Row():
-                            random_seed_btn = gr.Button(
-                                "🎲 Random",
-                                variant="secondary",
-                                size="sm",
-                                scale=1,
-                            )
-                            increment_seed = gr.Checkbox(
-                                label="Autoincrement",
-                                value=True,
-                                scale=8,
-                                elem_classes=["checkbox"],
-                                elem_id="increment-seed",
-                            )
+                    with gr.Row():
+                        model = gr.Dropdown(
+                            label="Model",
+                            choices=[
+                                "fluently/Fluently-v4",
+                                "Linaqruf/anything-v3-1",
+                                "Lykon/dreamshaper-8",
+                                "prompthero/openjourney-v4",
+                                "runwayml/stable-diffusion-v1-5",
+                                "SG161222/Realistic_Vision_V5.1_Novae",
+                            ],
+                            value="Lykon/dreamshaper-8",
+                        )
+                        scheduler = gr.Dropdown(
+                            label="Scheduler",
+                            choices=[
+                                "DEIS 2M",
+                                "DPM++ 2M",
+                                "DPM2 a",
+                                "Euler a",
+                                "Heun",
+                                "LMS",
+                                "PNDM",
+                            ],
+                            value="DEIS 2M",
+                            elem_id="scheduler",
+                        )
 
-            with gr.TabItem("🧠 Model"):
-                model = gr.Dropdown(
-                    label="Model",
-                    choices=[
-                        "fluently/Fluently-v4",
-                        "Lykon/dreamshaper-8",
-                        "prompthero/openjourney-v4",
-                        "runwayml/stable-diffusion-v1-5",
-                        "SG161222/Realistic_Vision_V5.1_Novae",
-                    ],
-                    value="Lykon/dreamshaper-8",
-                )
-                scheduler = gr.Dropdown(
-                    label="Scheduler",
-                    choices=[
-                        "DEIS 2M",
-                        "DPM++ 2M",
-                        "DPM2 a",
-                        "Euler a",
-                        "Heun",
-                        "LMS",
-                        "PNDM",
-                    ],
-                    value="DEIS 2M",
-                    elem_id="scheduler",
-                )
-                use_karras = gr.Checkbox(
-                    label="Karras σ",
-                    value=True,
-                    elem_classes=["checkbox"],
-                )
+                    with gr.Row():
+                        use_karras = gr.Checkbox(
+                            label="Use Karras σ",
+                            value=True,
+                            elem_classes=["checkbox"],
+                            scale=2,
+                        )
+                        increment_seed = gr.Checkbox(
+                            label="Autoincrement seed",
+                            value=True,
+                            elem_classes=["checkbox"],
+                            elem_id="increment-seed",
+                            scale=2,
+                        )
+                        random_seed_btn = gr.Button(
+                            "🎲 Random seed",
+                            variant="secondary",
+                            size="sm",
+                            scale=1,
+                        )
 
-            with gr.TabItem("ℹ️ About", elem_id="about"):
-                gr.Markdown(read_file("about.md"))
+            with gr.TabItem("🛠️ Advanced"):
+                gr.Markdown("_Coming soon..._", elem_classes=["markdown"])
+
+            with gr.TabItem("ℹ️ Info"):
+                gr.Markdown(read_file("info.md"), elem_classes=["markdown"])
+
+    # change gallery columns when num_images changes
+    num_images.change(
+        lambda n: gr.Gallery(columns=n),
+        inputs=[num_images],
+        outputs=[output_images],
+    )
 
     # update the random seed using JavaScript
     random_seed_btn.click(None, outputs=[seed], js="() => Math.floor(Math.random() * 2**32)")

@@ -1,4 +1,5 @@
 .accordion {
+  --block-border-width: 0px;
   background-color: transparent;
 }
 .accordion > button {
@@ -8,37 +9,46 @@
   width: auto;
   margin-right: 4px;
 }
-
-.gr-group div {
-  gap: 0px;
+.accordion .tabs {
+  margin-top: 12px;
+}
+.accordion .tabitem > div {
+  --block-border-width: 1px;
 }
 
 .tabs, .tabitem, .tab-nav, .tab-nav > .selected {
   border-width: 0px;
 }
-
-#about {
-  padding: 20px 24px;
+.tabitem {
+  max-height: 600px;
+  overflow-y: auto;
+}
+.tabitem .markdown {
+  margin-top: 4px;
+  margin-left: 8px;
 }
 
 #gallery {
-  background-color: var(--bg);
-}
-#gallery > div:nth-child(2) {
-  overflow-y: hidden;
-}
-.dark #gallery {
-  background-color: var(--background-fill-primary);
+  --block-border-width: 0px;
+  background-color: transparent;
 }
 
 #intro {
   display: flex;
   align-items: center;
 }
+#intro > h1 > span {
+  color: #047857 !important;
+  font-style: italic;
+}
+#intro > h1 > span:is(.dark *) {
+  color: #10b981 !important;
+}
 #intro > svg {
   display: inline-block;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.25rem;
   margin-left: 0.5rem;
   fill: #047857 !important;
   animation: spin 3s linear infinite reverse;
@@ -48,19 +58,4 @@
 }
 @keyframes spin {
   100% { transform: rotate(360deg); }
-}
-
-#menu-tabs {
-  margin-top: 12px;
-}
-
-#prompt {
-  background-color: var(--bg);
-}
-.dark #prompt {
-  background-color: var(--background-fill-primary);
-}
-
-#random-seed > button {
-  margin-right: 8px;
 }
