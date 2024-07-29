@@ -43,8 +43,8 @@ def generate_btn_click(*args, **kwargs):
 
 with gr.Blocks(
     head=read_file("head.html"),
-    css="./demo.css",
-    js="./demo.js",
+    css="./app.css",
+    js="./app.js",
     theme=gr.themes.Default(
         # colors
         primary_hue=gr.themes.colors.orange,
