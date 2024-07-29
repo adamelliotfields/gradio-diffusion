@@ -1,6 +1,6 @@
 ## Usage
 
-Enter a prompt and click `Generate`. [Civitai](https://civitai.com) has an excellent guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/).
+Enter a prompt and click **Generate**. [Civitai](https://civitai.com) has an excellent guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/).
 
 ### Compel
 
@@ -8,7 +8,7 @@ Positive and negative prompts are embedded by [Compel](https://github.com/damian
 
 ### Arrays
 
-Arrays allow you to generate different images from a single prompt. For example, `a cute [[cat,corgi,koala]]` will expand into 3 prompts. Note that it only works for the positive prompt. You must also increase `Images` to generate more than 1 image at a time. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
+Arrays allow you to generate different images from a single prompt. For example, `a cute [[cat,corgi,koala]]` will expand into 3 prompts. Note that it only works for the positive prompt. You also have to increase `Images` to generate more than 1 image at a time. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
 
 ### Autoincrement
 
@@ -16,18 +16,20 @@ If `Autoincrement` is checked, the seed will be incremented for each image. When
 
 ## Models
 
-Models are diffusion pipelines. All use `float16`. Recommended settings are shown below:
+All use `float16` (or `bfloat16` if supported). Recommended settings are shown below:
 
 * [fluently/fluently-v4](https://huggingface.co/fluently/Fluently-v4)
-  - sampler: DPM++ 2M, guidance: 5-7, steps: 20-30
+  - scheduler: DPM++ 2M, guidance: 5-7, steps: 20-30
+* [linaqruf/anything-v3-1](https://huggingface.co/linaqruf/anything-v3-1)
+  - scheduler: DPM++ 2M, guidance: 12, steps: 50, vae: default
 * [lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)
-  - sampler: DEIS 2M
+  - scheduler: DEIS 2M
 * [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4)
-  - sampler: PNDM
+  - scheduler: PNDM
 * [runwayml/stable-diffusion-v1-5](https://huggingface.co/runwayml/stable-diffusion-v1-5)
-  - sampler: PNDM
+  - scheduler: PNDM
 * [sg161222/realistic_vision_v5.1](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
-  - sampler: DPM++ 2M, guidance: 4-7
+  - scheduler: DPM++ 2M, guidance: 4-7
 
 ### Schedulers
 
@@ -47,11 +49,11 @@ All models use [madebyollin/taesd](https://huggingface.co/madebyollin/taesd) for
 
 ## TODO
 
-- [ ] Performance improvements
-- [ ] Support `bfloat16`
 - [ ] Support LoRA
+- [ ] Support embeddings
 - [ ] Add VAE radio
 - [ ] Add styles
-- [ ] CLIP skip
-- [ ] [Hires fix](https://comfyanonymous.github.io/ComfyUI_examples/2_pass_txt2img/)
-- [ ] Badges
+- [ ] Clip skip
+- [ ] DeepCache with T-GATE
+- [ ] Hires fix
+- [ ] Latent preview
