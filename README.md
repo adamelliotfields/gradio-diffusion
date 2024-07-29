@@ -7,7 +7,7 @@ colorTo: blue
 sdk: gradio
 sdk_version: 4.39.0
 python_version: 3.11.9
-app_file: demo.py
+app_file: app.py
 fullWidth: false
 pinned: true
 header: mini
