@@ -2,7 +2,7 @@ accelerate
 compel
 diffusers
 hf-transfer
-gradio==4.39.0
+gradio
 ruff
 scipy  # for LMS scheduler
 spaces
