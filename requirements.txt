@@ -8,3 +8,4 @@ scipy  # for LMS scheduler
 spaces
 torch
 torchvision
+transformers
