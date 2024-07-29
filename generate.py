@@ -19,6 +19,17 @@ from diffusers import (
 )
 from diffusers.models import AutoencoderTiny
 
+ZERO_GPU = (
+    environ.get("SPACES_ZERO_GPU", "").lower() == "true"
+    or environ.get("SPACES_ZERO_GPU", "") == "1"
+)
+
+TORCH_DTYPE = (
+    torch.bfloat16
+    if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    else torch.float16
+)
+
 # some models use the deprecated CLIPFeatureExtractor class
 # should use CLIPImageProcessor instead
 filterwarnings("ignore", category=FutureWarning, module="transformers")
@@ -32,18 +43,13 @@ class Loader:
             cls._instance = super(Loader, cls).__new__(cls)
             cls._instance.cpu = torch.device("cpu")
             cls._instance.gpu = torch.device("cuda")
-            cls._instance.model_cpu = None
-            cls._instance.model_gpu = None
+            cls._instance.pipe = None
         return cls._instance
 
     def load(self, model, scheduler, karras):
-        SPACES_ZERO_GPU = (
-            environ.get("SPACES_ZERO_GPU", "").lower() == "true"
-            or environ.get("SPACES_ZERO_GPU", "") == "1"
-        )
         model_lower = model.lower()
 
-        scheduler_map = {
+        schedulers = {
             "DEIS 2M": DEISMultistepScheduler,
             "DPM++ 2M": DPMSolverMultistepScheduler,
             "DPM2 a": KDPM2AncestralDiscreteScheduler,
@@ -59,63 +65,63 @@ class Loader:
             "beta_schedule": "scaled_linear",
             "timestep_spacing": "leading",
             "steps_offset": 1,
+            "use_karras_sigmas": karras,
         }
-
-        if self.model_gpu is not None:
-            same_model = self.model_gpu.config._name_or_path.lower() == model_lower
-            same_scheduler = isinstance(self.model_gpu.scheduler, scheduler_map[scheduler])
-            same_karras = (
-                not hasattr(self.model_gpu.scheduler.config, "use_karras_sigmas")
-                or self.model_gpu.scheduler.config.use_karras_sigmas == karras
-            )
-            if same_model and same_scheduler and same_karras:
-                return self.model_gpu
-
-        if karras:
-            scheduler_kwargs["use_karras_sigmas"] = True
 
         if scheduler == "PNDM" or scheduler == "Euler a":
             del scheduler_kwargs["use_karras_sigmas"]
 
-        variant = (
-            None
-            if model_lower in ["sg161222/realistic_vision_v5.1_novae", "prompthero/openjourney-v4"]
-            else "fp16"
-        )
-
-        pipeline_kwargs = {
+        pipe_kwargs = {
             "pretrained_model_name_or_path": model_lower,
             "requires_safety_checker": False,
             "safety_checker": None,
-            "scheduler": scheduler_map[scheduler](**scheduler_kwargs),
-            "torch_dtype": torch.float16,
-            "variant": variant,
+            "scheduler": schedulers[scheduler](**scheduler_kwargs),
+            "torch_dtype": TORCH_DTYPE,
             "use_safetensors": True,
-            "vae": AutoencoderTiny.from_pretrained(
-                "madebyollin/taesd",
-                torch_dtype=torch.float16,
-                use_safetensors=True,
-            ),
         }
 
-        scheduler_cls = scheduler_map[scheduler]
-        pipeline_kwargs["scheduler"] = scheduler_cls(**scheduler_kwargs)
+        # already loaded
+        if self.pipe is not None:
+            model_name = self.pipe.config._name_or_path
+            same_model = model_name.lower() == model_lower
+            same_scheduler = isinstance(self.pipe.scheduler, schedulers[scheduler])
+            same_karras = (
+                not hasattr(self.pipe.scheduler.config, "use_karras_sigmas")
+                or self.pipe.scheduler.config.use_karras_sigmas == karras
+            )
 
-        # in ZeroGPU we always start fresh
-        if SPACES_ZERO_GPU:
-            self.model_gpu = None
-            self.model_cpu = None
+            if same_model:
+                if not same_scheduler:
+                    print(f"Swapping scheduler to {scheduler}...")
+                elif not same_karras:
+                    print(f"{'Enabling' if karras else 'Disabling'} Karras sigmas...")
+                elif not (same_scheduler and same_karras):
+                    self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
+                return self.pipe
+            else:
+                print(f"Unloading {model_name.lower()}...")
+                self.pipe = None
+                torch.cuda.empty_cache()
 
-        if self.model_gpu is not None:
-            model_gpu_name = self.model_gpu.config._name_or_path
-            self.model_cpu = self.model_gpu.to(self.cpu, silence_dtype_warnings=True)
-            self.model_gpu = None
-            torch.cuda.empty_cache()
-            print(f"Moved {model_gpu_name} to CPU ✓")
+        # no fp16 available
+        if not ZERO_GPU and model_lower not in [
+            "sg161222/realistic_vision_v5.1_novae",
+            "prompthero/openjourney-v4",
+            "linaqruf/anything-v3-1",
+        ]:
+            pipe_kwargs["variant"] = "fp16"
 
-        self.model_gpu = StableDiffusionPipeline.from_pretrained(**pipeline_kwargs).to(self.gpu)
-        print(f"Moved {model_lower} to GPU ✓")
-        return self.model_gpu
+        # uses special VAE
+        if model_lower not in ["linaqruf/anything-v3-1"]:
+            pipe_kwargs["vae"] = AutoencoderTiny.from_pretrained(
+                "madebyollin/taesd",
+                torch_dtype=TORCH_DTYPE,
+                use_safetensors=True,
+            )
+
+        print(f"Loading {model_lower}...")
+        self.pipe = StableDiffusionPipeline.from_pretrained(**pipe_kwargs).to(self.gpu)
+        return self.pipe
 
 
 # prepare prompts for Compel
@@ -153,12 +159,16 @@ def generate(
     model="lykon/dreamshaper-8",
     scheduler="DEIS 2M",
     aspect_ratio="1:1",
-    guidance_scale=7,
+    guidance_scale=7.5,
     inference_steps=30,
     karras=True,
     num_images=1,
     increment_seed=True,
+    Error=Exception,
 ):
+    if not torch.cuda.is_available():
+        raise Error("CUDA not available")
+
     # image dimensions
     aspect_ratios = {
         "16:9": (640, 360),
@@ -178,8 +188,8 @@ def generate(
             tokenizer=pipe.tokenizer,
             text_encoder=pipe.text_encoder,
             truncate_long_prompts=False,
-            device=pipe.device.type,
-            dtype_for_device_getter=lambda _: torch.float16,
+            device=pipe.device,
+            dtype_for_device_getter=lambda _: TORCH_DTYPE,
         )
 
         neg_prompt = join_prompt(negative_prompt)
@@ -192,7 +202,9 @@ def generate(
         images = []
 
         for i in range(num_images):
-            generator = torch.Generator(device=pipe.device.type).manual_seed(current_seed)
+            generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
+
+            # run the prompt for this iteration
             all_positive_prompts = parse_prompt(positive_prompt)
             prompt_index = i % len(all_positive_prompts)
             pos_prompt = all_positive_prompts[prompt_index]
@@ -210,10 +222,13 @@ def generate(
                 guidance_scale=guidance_scale,
                 generator=generator,
             )
-
             images.append((result.images[0], str(current_seed)))
 
             if increment_seed:
                 current_seed += 1
+
+        if ZERO_GPU:
+            # spaces always start fresh
+            loader.pipe = None
 
         return images
