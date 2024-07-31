@@ -1,35 +1,41 @@
 ## Usage
 
-Enter a prompt and click **Generate**. [Civitai](https://civitai.com) has an excellent guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/).
+Enter a prompt and click `Generate`. Read [Civitai](https://civitai.com)'s guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/) to learn more.
 
 ### Compel
 
 Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel), enabling weighting and blending. See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md).
 
+### Embeddings
+
+Textual inversion embeddings are installed for use in the `Negative` prompt.
+
+* [Bad Prompt](https://civitai.com/models/55700/badprompt-negative-embedding): `<bad_prompt>`
+* [Negative Hand](https://civitai.com/models/56519/negativehand-negative-embedding): `<negative_hand>`
+* [Fast Negative](https://civitai.com/models/71961/fast-negative-embedding-fastnegativev2): `<fast_negative>`
+  - includes Negative Hand
+* [Bad Dream](https://civitai.com/models/72437?modelVersionId=77169): `<bad_dream>`
+* [Unrealistic Dream](https://civitai.com/models/72437?modelVersionId=77173): `<unrealistic_dream>`
+  - pair with Fast Negative and the Realistic Vision model
+
 ### Arrays
 
-Arrays allow you to generate different images from a single prompt. For example, `a cute [[cat,corgi,koala]]` will expand into 3 prompts. Note that it only works for the positive prompt. You also have to increase `Images` to generate more than 1 image at a time. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
+Arrays allow you to generate different images from a single prompt. For example, `a cute [[cat,corgi,koala]]` will expand into 3 prompts. For this to work, you first have to increase `Images`. Note that it only works for the positive prompt. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
 
 ### Autoincrement
 
-If `Autoincrement` is checked, the seed will be incremented for each image. When using arrays, you might want to uncheck this so the same seed is used for each prompt variation.
+If `Autoincrement` checked, the seed will be incremented for each image in range `Images`. When using arrays, you might want this disabled so the same seed is used.
 
 ## Models
 
-All use `float16` (or `bfloat16` if supported). Recommended settings are shown below:
+All use `float16` (or `bfloat16` if supported).
 
 * [fluently/fluently-v4](https://huggingface.co/fluently/Fluently-v4)
-  - scheduler: DPM++ 2M, guidance: 5-7, steps: 20-30
 * [linaqruf/anything-v3-1](https://huggingface.co/linaqruf/anything-v3-1)
-  - scheduler: DPM++ 2M, guidance: 12, steps: 50, vae: default
 * [lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)
-  - scheduler: DEIS 2M
 * [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4)
-  - scheduler: PNDM
 * [runwayml/stable-diffusion-v1-5](https://huggingface.co/runwayml/stable-diffusion-v1-5)
-  - scheduler: PNDM
 * [sg161222/realistic_vision_v5.1](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
-  - scheduler: DPM++ 2M, guidance: 4-7
 
 ### Schedulers
 
@@ -43,17 +49,24 @@ All are based on [k_diffusion](https://github.com/crowsonkb/k-diffusion) except 
 * [LMS](https://huggingface.co/docs/diffusers/api/schedulers/lms_discrete)
 * [PNDM](https://huggingface.co/docs/diffusers/api/schedulers/pndm)
 
-### VAE
+## Advanced
 
-All models use [madebyollin/taesd](https://huggingface.co/madebyollin/taesd) for speed.
+### DeepCache
 
-## TODO
+[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches UNet layers determined by `Branch` and reuses them every `Interval` steps. Leaving `Branch` on **0** caches lower layers, which provides a greater speedup. An `Interval` of **3** is the best balance between speed and quality; **1** means no cache.
 
-- [ ] Support LoRA
-- [ ] Support embeddings
-- [ ] Add VAE radio
-- [ ] Add styles
-- [ ] Clip skip
-- [ ] DeepCache with T-GATE
-- [ ] Hires fix
-- [ ] Latent preview
+### T-GATE
+
+[T-GATE](https://github.com/HaozheLiu-ST/T-GATE) (Zhang et al. 2024) caches self and cross attention computations up to `Step`. Afterwards, attention is no longer computed and the cache is used, resulting in a noticeable speedup. Works well with DeepCache.
+
+### Tiny VAE
+
+Enable [madebyollin/taesd](https://github.com/madebyollin/taesd) for almost instant latent decoding with a minor loss in detail. Useful for development and ideation.
+
+### Clip Skip
+
+When enabled, the last CLIP layer is skipped. This can improve image quality and is commonly used with anime models.
+
+### Prompt Truncation
+
+When enabled, prompts will be truncated to CLIP's limit of 77 tokens. By default this is disabled, so Compel will chunk prompts into segments rather than cutting them off.
