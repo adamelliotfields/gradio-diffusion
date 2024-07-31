@@ -1,11 +1,13 @@
 accelerate
 compel
+deepcache
 diffusers
 hf-transfer
 gradio
 ruff
 scipy  # for LMS scheduler
 spaces
+tgate
 torch
 torchvision
 transformers

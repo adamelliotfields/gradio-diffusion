@@ -28,7 +28,7 @@
   margin-left: 8px;
 }
 
-#gallery {
+.gallery {
   --block-border-width: 0px;
   background-color: transparent;
 }
