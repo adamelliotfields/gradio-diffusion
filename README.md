@@ -53,7 +53,7 @@ See [`info.md`](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/ma
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt torch==2.4.0 torchvision==0.19.0 gradio==4.39.0
+pip install -r requirements.txt torch==2.4.0 torchvision==0.19.0
 
 # http://localhost:7860
 python app.py
@@ -61,8 +61,8 @@ python app.py
 
 ## TODO
 
-- [ ] Support LoRA
-- [ ] Add styles
+- [ ] Styles
 - [ ] Hires fix
-- [ ] Latent preview
+- [ ] Support LoRA
 - [ ] Metadata embed and display
+- [ ] Latent preview
