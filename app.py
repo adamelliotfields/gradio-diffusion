@@ -4,7 +4,7 @@ import gradio as gr
 
 from generate import generate
 
-DEFAULT_NEGATIVE_PROMPT = "<bad_prompt>, ugly, unattractive, deformed, disfigured, mutated, blurry, distorted, noisy, grainy, glitch, worst quality"
+DEFAULT_NEGATIVE_PROMPT = "<fast_negative>"
 
 # base font stacks
 MONO_FONTS = ["monospace"]
@@ -60,6 +60,7 @@ with gr.Blocks(
         font=[gr.themes.GoogleFont("Inter"), *SANS_FONTS],
         font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), *MONO_FONTS],
     ).set(
+        layout_gap="8px",
         block_shadow="0 0 #0000",
         block_shadow_dark="0 0 #0000",
         block_background_fill=gr.themes.colors.gray.c50,
@@ -67,28 +68,49 @@ with gr.Blocks(
     ),
 ) as demo:
     gr.HTML(read_file("./partials/intro.html"))
-    output_images = gr.Gallery(
-        elem_classes=["gallery"],
-        show_share_button=False,
-        interactive=False,
-        show_label=False,
-        label="Output",
-        format="png",
-        columns=2,
-    )
-    prompt = gr.Textbox(
-        placeholder="corgi, at the beach, cute, 8k",
-        show_label=False,
-        label="Prompt",
-        value=None,
-        lines=2,
-    )
-    generate_btn = gr.Button("Generate", variant="primary", elem_classes=[])
+
+    with gr.Group():
+        output_images = gr.Gallery(
+            elem_classes=["gallery"],
+            show_share_button=False,
+            interactive=False,
+            show_label=False,
+            label="Output",
+            format="png",
+            columns=2,
+        )
+        prompt = gr.Textbox(
+            placeholder="corgi, at the beach, cute, 8k",
+            show_label=False,
+            label="Prompt",
+            value=None,
+            lines=2,
+        )
+
+    with gr.Row():
+        generate_btn = gr.Button("Generate", variant="primary", scale=6, elem_classes=[])
+        random_btn = gr.Button(
+            elem_classes=["icon-button"],
+            variant="secondary",
+            elem_id="random",
+            min_width=0,
+            value="🎲",
+            scale=1,
+        )
+        clear_btn = gr.ClearButton(
+            elem_classes=["icon-button"],
+            components=[output_images],
+            variant="secondary",
+            elem_id="clear",
+            min_width=0,
+            value="🗑️",
+            scale=1,
+        )
 
     with gr.Accordion(
         elem_classes=["accordion"],
         elem_id="menu",
-        label="Menu",
+        label="Open menu",
         open=False,
     ):
         with gr.Tabs():
@@ -98,12 +120,12 @@ with gr.Blocks(
                         label="Negative Prompt",
                         value=DEFAULT_NEGATIVE_PROMPT,
                         placeholder="",
-                        lines=1,
+                        lines=2,
                     )
 
                     with gr.Row():
                         num_images = gr.Dropdown(
-                            choices=[1, 2, 3, 4],
+                            choices=list(range(1, 9)),
                             filterable=False,
                             label="Images",
                             value=1,
@@ -113,7 +135,7 @@ with gr.Blocks(
                             label="Width",
                             minimum=256,
                             maximum=1024,
-                            value=512,
+                            value=448,
                             step=32,
                             scale=2,
                         )
@@ -121,7 +143,7 @@ with gr.Blocks(
                             label="Height",
                             minimum=256,
                             maximum=1024,
-                            value=512,
+                            value=576,
                             step=32,
                             scale=2,
                         )
@@ -131,7 +153,7 @@ with gr.Blocks(
                             label="Guidance Scale",
                             minimum=1.0,
                             maximum=15.0,
-                            value=7.5,
+                            value=7,
                             step=0.1,
                         )
                         inference_steps = gr.Slider(
@@ -171,7 +193,7 @@ with gr.Blocks(
                                 "PNDM",
                             ],
                         )
-                        seed = gr.Number(label="Seed", value=42)
+                        seed = gr.Number(label="Seed", value=42, scale=1)
 
                     with gr.Row():
                         use_karras = gr.Checkbox(
@@ -184,38 +206,32 @@ with gr.Blocks(
                             elem_classes=["checkbox"],
                             label="Autoincrement",
                             value=True,
-                            scale=2,
-                        )
-                        random_seed_btn = gr.Button(
-                            "🎲 Random seed",
-                            variant="secondary",
-                            size="sm",
-                            scale=1,
+                            scale=4,
                         )
 
             with gr.TabItem("🛠️ Advanced"):
                 with gr.Group():
                     with gr.Row():
-                        deep_cache_interval = gr.Slider(
+                        deepcache_interval = gr.Slider(
                             label="DeepCache Interval",
                             minimum=1,
                             maximum=4,
-                            value=0,
-                            step=1,
-                        )
-                        deep_cache_branch = gr.Slider(
-                            label="DeepCache Branch",
-                            minimum=0,
-                            maximum=3,
-                            value=0,
+                            value=2,
                             step=1,
                         )
                         tgate_step = gr.Slider(
                             label="T-GATE Step",
                             minimum=0,
                             maximum=50,
-                            value=0,
+                            value=20,
                             step=1,
+                        )
+                        tome_ratio = gr.Slider(
+                            label="ToMe Ratio",
+                            minimum=0.0,
+                            maximum=1.0,
+                            value=0.0,
+                            step=0.01,
                         )
 
                     with gr.Row():
@@ -242,7 +258,7 @@ with gr.Blocks(
                 gr.Markdown(read_file("info.md"), elem_classes=["markdown"])
 
     # update the random seed using JavaScript
-    random_seed_btn.click(None, outputs=[seed], js="() => Math.floor(Math.random() * 2**32)")
+    random_btn.click(None, outputs=[seed], js="() => Math.floor(Math.random() * 2**32)")
 
     # ensure correct argument order
     generate_btn.click(
@@ -266,9 +282,9 @@ with gr.Blocks(
             use_clip_skip,
             truncate_prompts,
             increment_seed,
-            deep_cache_interval,
-            deep_cache_branch,
+            deepcache_interval,
             tgate_step,
+            tome_ratio,
         ],
     )
 

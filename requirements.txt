@@ -1,13 +1,14 @@
 accelerate
 compel
-deepcache
+deepcache==0.1.1
 diffusers
 hf-transfer
-gradio
+gradio==4.39.0
 ruff
 scipy  # for LMS scheduler
 spaces
-tgate
+tgate==0.1.2
+tomesd==0.1.3
 torch
 torchvision
 transformers

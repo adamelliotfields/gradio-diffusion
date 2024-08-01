@@ -7,6 +7,7 @@ from types import MethodType
 from warnings import filterwarnings
 
 import spaces
+import tomesd
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from DeepCache import DeepCacheSDHelper
@@ -54,27 +55,63 @@ class Loader:
             cls._instance.pipe = None
         return cls._instance
 
+    def _load_deepcache(self, interval=1):
+        has_deepcache = hasattr(self.pipe, "deepcache")
+
+        if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
+            return self.pipe.deepcache
+        if has_deepcache:
+            self.pipe.deepcache.disable()
+        else:
+            self.pipe.deepcache = DeepCacheSDHelper(pipe=self.pipe)
+
+        self.pipe.deepcache.set_params(cache_interval=interval)
+        self.pipe.deepcache.enable()
+        return self.pipe.deepcache
+
+    def _load_tgate(self):
+        has_tgate = hasattr(self.pipe, "tgate")
+        has_deepcache = hasattr(self.pipe, "deepcache")
+
+        if not has_tgate:
+            self.pipe.tgate = MethodType(
+                tgate_sd_deepcache if has_deepcache else tgate_sd,
+                self.pipe,
+            )
+
+        return self.pipe.tgate
+
     def _load_vae(self, model_name=None, taesd=False, dtype=None):
-        if taesd:
+        vae_type = type(self.pipe.vae)
+        is_kl = issubclass(vae_type, (AutoencoderKL, OptimizedModule))
+        is_tiny = issubclass(vae_type, AutoencoderTiny)
+
+        # by default all models use KL
+        if is_kl and taesd:
             # can't compile tiny VAE
-            return AutoencoderTiny.from_pretrained(
+            print("Switching to Tiny VAE...")
+            self.pipe.vae = AutoencoderTiny.from_pretrained(
                 pretrained_model_name_or_path="madebyollin/taesd",
                 use_safetensors=True,
                 torch_dtype=dtype,
             ).to(self.gpu)
+            return self.pipe.vae
 
-        return torch.compile(
-            fullgraph=True,
-            mode="reduce-overhead",
-            model=AutoencoderKL.from_pretrained(
-                pretrained_model_name_or_path=model_name,
-                use_safetensors=True,
-                torch_dtype=dtype,
-                subfolder="vae",
-            ).to(self.gpu),
-        )
+        if is_tiny and not taesd:
+            print("Switching to KL VAE...")
+            self.pipe.vae = torch.compile(
+                fullgraph=True,
+                mode="reduce-overhead",
+                model=AutoencoderKL.from_pretrained(
+                    pretrained_model_name_or_path=model_name,
+                    use_safetensors=True,
+                    torch_dtype=dtype,
+                    subfolder="vae",
+                ).to(self.gpu),
+            )
+        return self.pipe.vae
 
-    def load(self, model, scheduler, karras, taesd, dtype=None):
+    def load(self, model, scheduler, karras, taesd, deepcache_interval, dtype=None):
         model_lower = model.lower()
 
         schedulers = {
@@ -126,13 +163,9 @@ class Loader:
                 if not same_scheduler or not same_karras:
                     self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
 
-                # if compiled will be an OptimizedModule
-                vae_type = type(self.pipe.vae)
-                if (issubclass(vae_type, (AutoencoderKL, OptimizedModule)) and taesd) or (
-                    issubclass(vae_type, AutoencoderTiny) and not taesd
-                ):
-                    print(f"Switching to {'Tiny' if taesd else 'KL'} VAE...")
-                    self.pipe.vae = self._load_vae(model_lower, taesd, dtype)
+                self._load_vae(model_lower, taesd, dtype)
+                self._load_deepcache(interval=deepcache_interval)
+                self._load_tgate()
                 return self.pipe
             else:
                 print(f"Unloading {model_name.lower()}...")
@@ -149,7 +182,9 @@ class Loader:
 
         print(f"Loading {model_lower} with {'Tiny' if taesd else 'KL'} VAE...")
         self.pipe = StableDiffusionPipeline.from_pretrained(**pipe_kwargs).to(self.gpu)
-        self.pipe.vae = self._load_vae(model_lower, taesd, dtype)
+        self._load_vae(model_lower, taesd, dtype)
+        self._load_deepcache(interval=deepcache_interval)
+        self._load_tgate()
         self.pipe.load_textual_inversion(
             pretrained_model_name_or_path=list(EMBEDDINGS.keys()),
             tokens=list(EMBEDDINGS.values()),
@@ -157,26 +192,15 @@ class Loader:
         return self.pipe
 
 
+# applies tome to the pipeline
 @contextmanager
-def deep_cache(pipe, interval=1, branch=0, tgate_step=0):
-    if interval > 1:
-        helper = DeepCacheSDHelper(pipe=pipe)
-        helper.set_params(cache_interval=interval, cache_branch_id=branch)
-        helper.enable()
-
-        if tgate_step > 0:
-            pipe.deepcache = helper
-            pipe.tgate = MethodType(tgate_sd_deepcache, pipe)
-
-        try:
-            yield helper
-        finally:
-            helper.disable()
-    elif interval < 2 and tgate_step > 0:
-        pipe.tgate = MethodType(tgate_sd, pipe)
-        yield None
-    else:
-        yield None
+def token_merging(pipe, tome_ratio=0):
+    try:
+        if tome_ratio > 0:
+            tomesd.apply_patch(pipe, max_downsample=1, sx=2, sy=2, ratio=tome_ratio)
+        yield
+    finally:
+        tomesd.remove_patch(pipe)  # idempotent
 
 
 # parse prompts with arrays
@@ -194,7 +218,6 @@ def parse_prompt(prompt: str) -> list[str]:
         current_prompt = prompt
         for i, token in enumerate(combo):
             current_prompt = current_prompt.replace(f"[[{arrays[i]}]]", token.strip(), 1)
-
         prompts.append(current_prompt)
     return prompts
 
@@ -216,9 +239,9 @@ def generate(
     clip_skip=False,
     truncate_prompts=False,
     increment_seed=True,
-    deep_cache_interval=1,
-    deep_cache_branch=0,
+    deepcache_interval=1,
     tgate_step=0,
+    tome_ratio=0,
     Error=Exception,
 ):
     if not torch.cuda.is_available():
@@ -241,7 +264,7 @@ def generate(
 
     with torch.inference_mode():
         loader = Loader()
-        pipe = loader.load(model, scheduler, karras, taesd, dtype=TORCH_DTYPE)
+        pipe = loader.load(model, scheduler, karras, taesd, deepcache_interval, TORCH_DTYPE)
 
         # prompt embeds
         compel = Compel(
@@ -271,25 +294,21 @@ def generate(
                 [pos_embeds, neg_embeds]
             )
 
-            with deep_cache(
-                pipe,
-                interval=deep_cache_interval,
-                branch=deep_cache_branch,
-                tgate_step=tgate_step,
-            ):
-                pipe_kwargs = {
-                    "num_inference_steps": inference_steps,
-                    "negative_prompt_embeds": neg_embeds,
-                    "guidance_scale": guidance_scale,
-                    "prompt_embeds": pos_embeds,
-                    "generator": generator,
-                    "height": height,
-                    "width": width,
-                }
-                result = (
-                    pipe.tgate(**pipe_kwargs, gate_step=tgate_step)
-                    if tgate_step > 0
-                    else pipe(**pipe_kwargs)
+            with token_merging(pipe, tome_ratio=tome_ratio):
+                # cap the tgate step
+                gate_step = min(
+                    tgate_step if tgate_step > 0 else inference_steps,
+                    inference_steps,
+                )
+                result = pipe.tgate(
+                    num_inference_steps=inference_steps,
+                    negative_prompt_embeds=neg_embeds,
+                    guidance_scale=guidance_scale,
+                    prompt_embeds=pos_embeds,
+                    gate_step=gate_step,
+                    generator=generator,
+                    height=height,
+                    width=width,
                 )
                 images.append((result.images[0], str(current_seed)))
 
