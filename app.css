@@ -4,16 +4,82 @@
 }
 .accordion > button {
   justify-content: flex-start;
+  color: var(--body-text-color-subdued);
+}
+.accordion > button:hover {
+  color: var(--body-text-color);
 }
 .accordion > button > span:first-child {
   width: auto;
   margin-right: 4px;
 }
 .accordion .tabs {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 .accordion .tabitem > div {
   --block-border-width: 1px;
+}
+
+.gallery {
+  background-color: var(--bg);
+}
+.gallery:is(.dark *) {
+  background-color: var(--bg-dark);
+}
+
+.icon-button {
+  max-width: 42px;
+  position: relative;
+}
+.icon-button:hover::after {
+  white-space: nowrap;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-width: 1px;
+  border-color: var(--button-secondary-border-color-hover);
+  background: var(--button-secondary-background-fill-hover);
+  color: var(--button-secondary-text-color-hover);
+  font-weight: var(--section-header-text-weight);
+  font-size: var(--section-header-text-size);
+}
+.icon-button#clear:hover::after {
+  content: 'Clear gallery';
+}
+.icon-button#random:hover::after {
+  content: 'Roll seed';
+}
+
+#intro {
+  margin-bottom: 8px !important;
+}
+#intro > div {
+  display: flex;
+}
+#intro > div > h1 > span {
+  font-style: italic;
+  color: #047857 !important;
+}
+#intro > div > h1 > span:is(.dark *) {
+  color: #10b981 !important;
+}
+#intro > div > svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.25rem;
+  margin-left: 0.5rem;
+  align-self: center;
+  fill: #047857 !important;
+  animation: spin 3s linear infinite reverse;
+}
+#intro > div > svg:is(.dark *) {
+  fill: #10b981 !important;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }
 
 .tabs, .tabitem, .tab-nav, .tab-nav > .selected {
@@ -24,38 +90,8 @@
   overflow-y: auto;
 }
 .tabitem .markdown {
-  margin-top: 4px;
   margin-left: 8px;
 }
-
-.gallery {
-  --block-border-width: 0px;
-  background-color: transparent;
-}
-
-#intro {
-  display: flex;
-  align-items: center;
-}
-#intro > h1 > span {
-  color: #047857 !important;
-  font-style: italic;
-}
-#intro > h1 > span:is(.dark *) {
-  color: #10b981 !important;
-}
-#intro > svg {
-  display: inline-block;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 0.25rem;
-  margin-left: 0.5rem;
-  fill: #047857 !important;
-  animation: spin 3s linear infinite reverse;
-}
-#intro > svg:is(.dark *) {
-  fill: #10b981 !important;
-}
-@keyframes spin {
-  100% { transform: rotate(360deg); }
+.tab-nav > button {
+  padding-bottom: 8px;
 }
