@@ -1,4 +1,5 @@
 import re
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from itertools import product
@@ -6,6 +7,7 @@ from os import environ
 from types import MethodType
 from warnings import filterwarnings
 
+import gradio as gr
 import spaces
 import tomesd
 import torch
@@ -242,10 +244,10 @@ def generate(
     deepcache_interval=1,
     tgate_step=0,
     tome_ratio=0,
-    Error=Exception,
+    progress=gr.Progress(track_tqdm=True),
 ):
     if not torch.cuda.is_available():
-        raise Error("CUDA not available")
+        raise gr.Error("CUDA not available")
 
     if seed is None:
         seed = int(datetime.now().timestamp())
@@ -263,6 +265,7 @@ def generate(
     )
 
     with torch.inference_mode():
+        start = time.perf_counter()
         loader = Loader()
         pipe = loader.load(model, scheduler, karras, taesd, deepcache_interval, TORCH_DTYPE)
 
@@ -319,4 +322,7 @@ def generate(
             # spaces always start fresh
             loader.pipe = None
 
+        end = time.perf_counter()
+        diff = end - start
+        gr.Info(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
         return images

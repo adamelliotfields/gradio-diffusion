@@ -1,5 +1,3 @@
-import time
-
 import gradio as gr
 
 from generate import generate
@@ -23,24 +21,14 @@ def read_file(path: str) -> str:
 
 
 # don't request a GPU if input is bad
-def generate_btn_click(*args, **kwargs):
-    start = time.perf_counter()
-
-    if "prompt" in kwargs:
-        prompt = kwargs.get("prompt")
-    elif len(args) > 0:
+def generate_btn_click(*args):
+    if len(args) > 0:
         prompt = args[0]
     else:
         prompt = None
-
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
-
-    images = generate(*args, **kwargs, Error=gr.Error)
-    end = time.perf_counter()
-    diff = end - start
-    gr.Info(f"Generated {len(images)} images in {diff:.2f}s")
-    return images
+    return generate(*args)
 
 
 with gr.Blocks(
