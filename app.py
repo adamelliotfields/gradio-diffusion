@@ -218,8 +218,8 @@ with gr.Blocks(
                             scale=3,
                         )
 
-            with gr.TabItem("ℹ️ Info"):
-                gr.Markdown(read_file("info.md"), elem_classes=["markdown"])
+            with gr.TabItem("ℹ️ Usage"):
+                gr.Markdown(read_file("usage.md"), elem_classes=["markdown"])
 
     with gr.Group():
         output_images = gr.Gallery(

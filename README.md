@@ -46,7 +46,7 @@ Gradio-based Stable Diffusion 1.5 app on ZeroGPU.
 
 ## Usage
 
-See [`info.md`](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/info.md).
+See [`usage.md`](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/usage.md).
 
 ## Installation
 

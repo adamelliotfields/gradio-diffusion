@@ -1,0 +1,82 @@
+## Usage
+
+Enter a prompt and click `Generate`.
+
+### Prompting
+
+Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel) for weighting. You can use a float or +/-. For example:
+* `man, portrait, blue+ eyes, close-up`
+* `man, portrait, (blue)1.1 eyes, close-up`
+* `man, portrait, (blue eyes)-, close-up`
+* `man, portrait, (blue eyes)0.9, close-up`
+
+Note that `++` is `1.1^2` (and so on). See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more and read [Civitai](https://civitai.com)'s guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/) for best practices.
+
+#### Negative Prompt
+
+Start with a [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embedding:
+
+* [`<bad_prompt>`](https://civitai.com/models/55700/badprompt-negative-embedding)
+* [`<negative_hand>`](https://civitai.com/models/56519/negativehand-negative-embedding)
+* [`<fast_negative>`](https://civitai.com/models/71961/fast-negative-embedding-fastnegativev2)
+* [`<bad_dream>`](https://civitai.com/models/72437?modelVersionId=77169)
+* [`<unrealistic_dream>`](https://civitai.com/models/72437?modelVersionId=77173)
+
+And iterate from there. You can use weighting in the negative prompt as well.
+
+#### Arrays
+
+Arrays allow you to generate different images from a single prompt. For example, `man, [[blue,blue+,blue++]] eyes` will expand into 3 separate prompts. Make sure `Images` is set accordingly (e.g., 3). Only works for the positive prompt. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
+
+When using arrays, you should disable `Autoincrement` so the same seed is used for each generation.
+
+### Models
+
+* [lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8): general purpose (default)
+* [fluently/fluently-v4](https://huggingface.co/fluently/Fluently-v4): general purpose merge
+* [linaqruf/anything-v3-1](https://huggingface.co/linaqruf/anything-v3-1): anime
+* [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4): Midjourney-like
+* [runwayml/stable-diffusion-v1-5](https://huggingface.co/runwayml/stable-diffusion-v1-5): base
+* [sg161222/realistic_vision_v5.1](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE): photorealistic
+
+#### Schedulers
+
+All are based on [k_diffusion](https://github.com/crowsonkb/k-diffusion) except [DEIS](https://github.com/qsh-zh/deis) and [DPM++](https://github.com/LuChengTHU/dpm-solver). Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be used:
+
+* [DEIS 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/deis) (default)
+* [DPM++ 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/multistep_dpm_solver)
+* [DPM2 a](https://huggingface.co/docs/diffusers/api/schedulers/dpm_discrete_ancestral)
+* [Euler a](https://huggingface.co/docs/diffusers/en/api/schedulers/euler_ancestral)
+* [Heun](https://huggingface.co/docs/diffusers/api/schedulers/heun)
+* [LMS](https://huggingface.co/docs/diffusers/api/schedulers/lms_discrete)
+* [PNDM](https://huggingface.co/docs/diffusers/api/schedulers/pndm)
+
+### Advanced
+
+#### DeepCache
+
+[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower UNet layers and reuses them every `Interval` steps:
+* `1`: no caching
+* `2`: more quality (default)
+* `3`: balanced
+* `4`: more speed
+
+#### T-GATE
+
+[T-GATE](https://github.com/HaozheLiu-ST/T-GATE) (Zhang et al. 2024) caches self and cross attention computations up to `Step`. Afterwards, attention is no longer computed and the cache is used, resulting in a noticeable speedup. Defaults to `20`.
+
+#### ToME
+
+[ToMe](https://arxiv.org/abs/2303.17604) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.
+
+#### Tiny VAE
+
+Enable [madebyollin/taesd](https://github.com/madebyollin/taesd) for almost instant latent decoding with a minor loss in detail. Useful for development.
+
+#### Clip Skip
+
+When enabled, the last CLIP layer is skipped. This _can_ improve image quality with anime models.
+
+#### Prompt Truncation
+
+When enabled, prompts will be truncated to CLIP's limit of 77 tokens. By default this is disabled, so Compel will chunk prompts into segments rather than cutting them off.
