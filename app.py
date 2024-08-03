@@ -266,7 +266,7 @@ with gr.Blocks(
     # ensure correct argument order
     generate_btn.click(
         generate_btn_click,
-        api_name="generate",
+        api_name="api",
         concurrency_limit=5,
         outputs=[output_images],
         inputs=[

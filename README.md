@@ -1,9 +1,10 @@
 ---
-title: Stable Diffusion Zero
-short_description: SD 1.5 on ZeroGPU
-emoji: 😻
-colorFrom: yellow
-colorTo: blue
+# https://huggingface.co/docs/hub/en/spaces-config-reference
+title: Diffusion Zero
+short_description: Image generation studio on ZeroGPU
+emoji: 🧨
+colorFrom: blue
+colorTo: purple
 sdk: gradio
 sdk_version: 4.39.0
 python_version: 3.11.9
@@ -42,7 +43,7 @@ preload_from_hub:
 
 # diffusion
 
-Gradio-based Stable Diffusion 1.5 app on ZeroGPU.
+Gradio-based UI for Stable Diffusion pipelines.
 
 ## Usage
 
@@ -65,4 +66,5 @@ python app.py
 - [ ] Hires fix
 - [ ] Support LoRA
 - [ ] Metadata embed and display
+- [ ] Image-to-image
 - [ ] Latent preview
