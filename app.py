@@ -14,6 +14,18 @@ SANS_FONTS = [
     "Noto Color Emoji",
 ]
 
+# random seed JS
+# display the seed as hover text
+# note that the CSS `content` attribute expects a string so we need to wrap the number in quotes
+SEED_JS = """
+() => {
+    const n = Math.floor(Math.random() * 2**32);
+    const button = document.getElementById("random");
+    button.style.setProperty("--seed", `"${n}"`);
+    return n;
+}
+"""
+
 
 def read_file(path: str) -> str:
     with open(path, "r", encoding="utf-8") as file:
@@ -56,44 +68,6 @@ with gr.Blocks(
     ),
 ) as demo:
     gr.HTML(read_file("./partials/intro.html"))
-
-    with gr.Group():
-        output_images = gr.Gallery(
-            elem_classes=["gallery"],
-            show_share_button=False,
-            interactive=False,
-            show_label=False,
-            label="Output",
-            format="png",
-            columns=2,
-        )
-        prompt = gr.Textbox(
-            placeholder="corgi, at the beach, cute, 8k",
-            show_label=False,
-            label="Prompt",
-            value=None,
-            lines=2,
-        )
-
-    with gr.Row():
-        generate_btn = gr.Button("Generate", variant="primary", scale=6, elem_classes=[])
-        random_btn = gr.Button(
-            elem_classes=["icon-button"],
-            variant="secondary",
-            elem_id="random",
-            min_width=0,
-            value="🎲",
-            scale=1,
-        )
-        clear_btn = gr.ClearButton(
-            elem_classes=["icon-button"],
-            components=[output_images],
-            variant="secondary",
-            elem_id="clear",
-            min_width=0,
-            value="🗑️",
-            scale=1,
-        )
 
     with gr.Accordion(
         elem_classes=["accordion"],
@@ -155,6 +129,7 @@ with gr.Blocks(
                     with gr.Row():
                         model = gr.Dropdown(
                             value="Lykon/dreamshaper-8",
+                            min_width=200,
                             label="Model",
                             scale=2,
                             choices=[
@@ -170,6 +145,7 @@ with gr.Blocks(
                             elem_id="scheduler",
                             label="Scheduler",
                             value="DEIS 2M",
+                            min_width=200,
                             scale=2,
                             choices=[
                                 "DEIS 2M",
@@ -181,7 +157,7 @@ with gr.Blocks(
                                 "PNDM",
                             ],
                         )
-                        seed = gr.Number(label="Seed", value=42, scale=1)
+                        seed = gr.Number(label="Seed", value=0, scale=1)
 
                     with gr.Row():
                         use_karras = gr.Checkbox(
@@ -245,8 +221,47 @@ with gr.Blocks(
             with gr.TabItem("ℹ️ Info"):
                 gr.Markdown(read_file("info.md"), elem_classes=["markdown"])
 
+    with gr.Group():
+        output_images = gr.Gallery(
+            elem_classes=["gallery"],
+            show_share_button=False,
+            interactive=False,
+            show_label=False,
+            object_fit="cover",
+            label="Output",
+            format="png",
+            columns=2,
+        )
+        prompt = gr.Textbox(
+            placeholder="corgi, at the beach, cute, 8k",
+            show_label=False,
+            label="Prompt",
+            value=None,
+            lines=2,
+        )
+
+    with gr.Row():
+        generate_btn = gr.Button("Generate", variant="primary", scale=6, elem_classes=[])
+        random_btn = gr.Button(
+            elem_classes=["icon-button"],
+            variant="secondary",
+            elem_id="random",
+            min_width=0,
+            value="🎲",
+            scale=1,
+        )
+        clear_btn = gr.ClearButton(
+            elem_classes=["icon-button"],
+            components=[output_images],
+            variant="secondary",
+            elem_id="clear",
+            min_width=0,
+            value="🗑️",
+            scale=1,
+        )
+
     # update the random seed using JavaScript
-    random_btn.click(None, outputs=[seed], js="() => Math.floor(Math.random() * 2**32)")
+    random_btn.click(None, outputs=[seed], js=SEED_JS)
 
     # ensure correct argument order
     generate_btn.click(
@@ -278,8 +293,6 @@ with gr.Blocks(
 
 # https://www.gradio.app/docs/gradio/interface#interface-queue
 demo.queue().launch(
-    {
-        "server_name": "0.0.0.0",
-        "server_port": 7860,
-    }
+    server_name="0.0.0.0",
+    server_port=7860,
 )
