@@ -6,12 +6,12 @@ from itertools import product
 from os import environ
 from types import MethodType
 from typing import Callable
-from warnings import filterwarnings
 
 import spaces
 import tomesd
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
+from compel.prompt_parser import PromptParser
 from DeepCache import DeepCacheSDHelper
 from diffusers import (
     DEISMultistepScheduler,
@@ -28,6 +28,10 @@ from tgate.SD import tgate as tgate_sd
 from tgate.SD_DeepCache import tgate as tgate_sd_deepcache
 from torch._dynamo import OptimizedModule
 
+# some models use the deprecated CLIPFeatureExtractor class (should use CLIPImageProcessor)
+__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
+__import__("transformers").logging.set_verbosity_error()
+
 ZERO_GPU = (
     environ.get("SPACES_ZERO_GPU", "").lower() == "true"
     or environ.get("SPACES_ZERO_GPU", "") == "1"
@@ -41,11 +45,9 @@ EMBEDDINGS = {
     "./embeddings/UnrealisticDream.pt": "<unrealistic_dream>",
 }
 
-# some models use the deprecated CLIPFeatureExtractor class
-# should use CLIPImageProcessor instead
-filterwarnings("ignore", category=FutureWarning, module="transformers")
 
-
+# inspired by ComfyUI
+# https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/model_management.py
 class Loader:
     _instance = None
 
@@ -223,7 +225,8 @@ def parse_prompt(prompt: str) -> list[str]:
     return prompts
 
 
-@spaces.GPU(duration=30)
+# 1024x1024 for 50 steps can take ~10s each
+@spaces.GPU(duration=44)
 def generate(
     positive_prompt,
     negative_prompt="",
@@ -282,20 +285,26 @@ def generate(
 
         images = []
         current_seed = seed
-        neg_embeds = compel(negative_prompt)
+
+        try:
+            neg_embeds = compel(negative_prompt)
+        except PromptParser.ParsingException:
+            raise Error("ParsingException: Invalid negative prompt")
 
         for i in range(num_images):
             # seeded generator for each iteration
             generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
 
-            # get the prompt for this iteration
-            all_positive_prompts = parse_prompt(positive_prompt)
-            prompt_index = i % len(all_positive_prompts)
-            pos_prompt = all_positive_prompts[prompt_index]
-            pos_embeds = compel(pos_prompt)
-            pos_embeds, neg_embeds = compel.pad_conditioning_tensors_to_same_length(
-                [pos_embeds, neg_embeds]
-            )
+            try:
+                all_positive_prompts = parse_prompt(positive_prompt)
+                prompt_index = i % len(all_positive_prompts)
+                pos_prompt = all_positive_prompts[prompt_index]
+                pos_embeds = compel(pos_prompt)
+                pos_embeds, neg_embeds = compel.pad_conditioning_tensors_to_same_length(
+                    [pos_embeds, neg_embeds]
+                )
+            except PromptParser.ParsingException:
+                raise Error("ParsingException: Invalid prompt")
 
             with token_merging(pipe, tome_ratio=tome_ratio):
                 # cap the tgate step

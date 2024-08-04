@@ -34,15 +34,18 @@ def read_file(path: str) -> str:
         return file.read()
 
 
-# don't request a GPU if input is bad
-def generate_btn_click(*args):
+def handle_generate(*args):
     if len(args) > 0:
         prompt = args[0]
     else:
         prompt = None
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
-    return generate(*args, log=gr.Info, Error=gr.Error)
+    try:
+        images = generate(*args, log=gr.Info, Error=gr.Error)
+    except RuntimeError:
+        raise gr.Error("RuntimeError: Please try again")
+    return images
 
 
 with gr.Blocks(
@@ -287,8 +290,9 @@ with gr.Blocks(
         outputs=[tgate_step],
     )
 
-    generate_btn.click(
-        generate_btn_click,
+    gr.on(
+        triggers=[generate_btn.click, prompt.submit],
+        fn=handle_generate,
         api_name="api",
         concurrency_limit=5,
         outputs=[output_images],
