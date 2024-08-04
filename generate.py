@@ -5,9 +5,9 @@ from datetime import datetime
 from itertools import product
 from os import environ
 from types import MethodType
+from typing import Callable
 from warnings import filterwarnings
 
-import gradio as gr
 import spaces
 import tomesd
 import torch
@@ -80,7 +80,6 @@ class Loader:
                 tgate_sd_deepcache if has_deepcache else tgate_sd,
                 self.pipe,
             )
-
         return self.pipe.tgate
 
     def _load_vae(self, model_name=None, taesd=False, dtype=None):
@@ -244,10 +243,11 @@ def generate(
     deepcache_interval=1,
     tgate_step=0,
     tome_ratio=0,
-    progress=gr.Progress(track_tqdm=True),
+    log: Callable[[str], None] = None,
+    Error=Exception,
 ):
     if not torch.cuda.is_available():
-        raise gr.Error("CUDA not available")
+        raise Error("CUDA not available")
 
     if seed is None:
         seed = int(datetime.now().timestamp())
@@ -324,5 +324,6 @@ def generate(
 
         end = time.perf_counter()
         diff = end - start
-        gr.Info(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
+        if log:
+            log(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
         return images

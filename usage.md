@@ -41,7 +41,7 @@ When using arrays, you should disable `Autoincrement` so the same seed is used f
 
 #### Schedulers
 
-All are based on [k_diffusion](https://github.com/crowsonkb/k-diffusion) except [DEIS](https://github.com/qsh-zh/deis) and [DPM++](https://github.com/LuChengTHU/dpm-solver). Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be used:
+Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be used:
 
 * [DEIS 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/deis) (default)
 * [DPM++ 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/multistep_dpm_solver)
@@ -63,11 +63,11 @@ All are based on [k_diffusion](https://github.com/crowsonkb/k-diffusion) except 
 
 #### T-GATE
 
-[T-GATE](https://github.com/HaozheLiu-ST/T-GATE) (Zhang et al. 2024) caches self and cross attention computations up to `Step`. Afterwards, attention is no longer computed and the cache is used, resulting in a noticeable speedup. Defaults to `20`.
+[Temporal gating](https://github.com/HaozheLiu-ST/T-GATE) (Zhang et al. 2024) caches self and cross attention computations up to `Step`. Afterwards, attention is no longer computed and the cache is used, resulting in a noticeable speedup.
 
-#### ToME
+#### ToMe
 
-[ToMe](https://arxiv.org/abs/2303.17604) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.
+[Token merging](https://arxiv.org/abs/2303.17604) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.
 
 #### Tiny VAE
 
@@ -79,4 +79,4 @@ When enabled, the last CLIP layer is skipped. This _can_ improve image quality w
 
 #### Prompt Truncation
 
-When enabled, prompts will be truncated to CLIP's limit of 77 tokens. By default this is disabled, so Compel will chunk prompts into segments rather than cutting them off.
+When enabled, prompts will be truncated to CLIP's limit of 77 tokens. By default this is _disabled_, so Compel will chunk prompts into segments rather than cutting them off.

@@ -1,3 +1,5 @@
+import argparse
+
 import gradio as gr
 
 from generate import generate
@@ -40,7 +42,7 @@ def generate_btn_click(*args):
         prompt = None
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
-    return generate(*args)
+    return generate(*args, log=gr.Info, Error=gr.Error)
 
 
 with gr.Blocks(
@@ -87,10 +89,10 @@ with gr.Blocks(
 
                     with gr.Row():
                         num_images = gr.Dropdown(
-                            choices=list(range(1, 9)),
+                            choices=list(range(1, 5)),
                             filterable=False,
                             label="Images",
-                            value=1,
+                            value=4,
                             scale=1,
                         )
                         width = gr.Slider(
@@ -129,6 +131,7 @@ with gr.Blocks(
                     with gr.Row():
                         model = gr.Dropdown(
                             value="Lykon/dreamshaper-8",
+                            filterable=False,
                             min_width=200,
                             label="Model",
                             scale=2,
@@ -144,6 +147,7 @@ with gr.Blocks(
                         scheduler = gr.Dropdown(
                             elem_id="scheduler",
                             label="Scheduler",
+                            filterable=False,
                             value="DEIS 2M",
                             min_width=200,
                             scale=2,
@@ -186,14 +190,22 @@ with gr.Blocks(
                         tgate_step = gr.Slider(
                             label="T-GATE Step",
                             minimum=0,
-                            maximum=50,
-                            value=20,
+                            maximum=30,
+                            value=0,
                             step=1,
+                        )
+
+                    with gr.Row():
+                        file_format = gr.Dropdown(
+                            choices=["png", "jpeg", "webp"],
+                            label="File Format",
+                            filterable=False,
+                            value="png",
                         )
                         tome_ratio = gr.Slider(
                             label="ToMe Ratio",
                             minimum=0.0,
-                            maximum=1.0,
+                            maximum=0.5,
                             value=0.0,
                             step=0.01,
                         )
@@ -263,7 +275,18 @@ with gr.Blocks(
     # update the random seed using JavaScript
     random_btn.click(None, outputs=[seed], js=SEED_JS)
 
-    # ensure correct argument order
+    file_format.change(
+        lambda f: gr.Gallery(format=f),
+        inputs=[file_format],
+        outputs=[output_images],
+    )
+
+    inference_steps.change(
+        lambda max, step: gr.Slider(maximum=max, value=min(max, step)),
+        inputs=[inference_steps, tgate_step],
+        outputs=[tgate_step],
+    )
+
     generate_btn.click(
         generate_btn_click,
         api_name="api",
@@ -291,8 +314,14 @@ with gr.Blocks(
         ],
     )
 
-# https://www.gradio.app/docs/gradio/interface#interface-queue
-demo.queue().launch(
-    server_name="0.0.0.0",
-    server_port=7860,
-)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument("-s", "--server", type=str, metavar="STR", default="0.0.0.0")
+    parser.add_argument("-p", "--port", type=int, metavar="INT", default=7860)
+    args = parser.parse_args()
+
+    # https://www.gradio.app/docs/gradio/interface#interface-queue
+    demo.queue().launch(
+        server_name=args.server,
+        server_port=args.port,
+    )

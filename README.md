@@ -56,8 +56,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt torch==2.4.0 torchvision==0.19.0
 
-# http://localhost:7860
-python app.py
+# gradio
+python app.py --port 7860
+
+# cli
+python cli.py 'an astronaut riding a horse on mars'
 ```
 
 ## TODO
