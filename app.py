@@ -1,30 +1,26 @@
 import argparse
+import json
 
 import gradio as gr
 
+import config as cfg
 from generate import generate
 
-DEFAULT_NEGATIVE_PROMPT = "<fast_negative>"
-
-# base font stacks
-MONO_FONTS = ["monospace"]
-SANS_FONTS = [
-    "sans-serif",
-    "Apple Color Emoji",
-    "Segoe UI Emoji",
-    "Segoe UI Symbol",
-    "Noto Color Emoji",
-]
-
-# random seed JS
-# display the seed as hover text
-# note that the CSS `content` attribute expects a string so we need to wrap the number in quotes
-SEED_JS = """
+# the CSS `content` attribute expects a string so we need to wrap the number in quotes
+random_seed_js = """
 () => {
-    const n = Math.floor(Math.random() * 2**32);
+    const n = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
     const button = document.getElementById("random");
     button.style.setProperty("--seed", `"${n}"`);
     return n;
+}
+"""
+
+seed_js = """
+(seed) => {
+    const button = document.getElementById("random");
+    button.style.setProperty("--seed", `"${seed}"`);
+    return seed;
 }
 """
 
@@ -48,6 +44,9 @@ def handle_generate(*args):
     return images
 
 
+with open("./styles/twri.json", "r") as f:
+    styles = json.load(f)
+
 with gr.Blocks(
     head=read_file("./partials/head.html"),
     css="./app.css",
@@ -62,8 +61,8 @@ with gr.Blocks(
         radius_size=gr.themes.sizes.radius_sm,
         spacing_size=gr.themes.sizes.spacing_md,
         # fonts
-        font=[gr.themes.GoogleFont("Inter"), *SANS_FONTS],
-        font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), *MONO_FONTS],
+        font=[gr.themes.GoogleFont("Inter"), *cfg.SANS_FONTS],
+        font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), *cfg.MONO_FONTS],
     ).set(
         layout_gap="8px",
         block_shadow="0 0 #0000",
@@ -85,86 +84,84 @@ with gr.Blocks(
                 with gr.Group():
                     negative_prompt = gr.Textbox(
                         label="Negative Prompt",
-                        value=DEFAULT_NEGATIVE_PROMPT,
-                        placeholder="",
+                        value=cfg.NEGATIVE_PROMPT,
+                        placeholder="ugly, bad",
                         lines=2,
                     )
 
+                    model = gr.Dropdown(
+                        value=cfg.MODEL,
+                        filterable=False,
+                        label="Model",
+                        choices=cfg.MODELS,
+                    )
+
                     with gr.Row():
-                        num_images = gr.Dropdown(
-                            choices=list(range(1, 5)),
-                            filterable=False,
-                            label="Images",
-                            value=4,
+                        style = gr.Dropdown(
+                            label="Style",
+                            choices=["None"] + [f"{style['name']}" for style in styles],
+                            value=cfg.STYLE,
                             scale=1,
-                        )
-                        width = gr.Slider(
-                            label="Width",
-                            minimum=256,
-                            maximum=1024,
-                            value=448,
-                            step=32,
-                            scale=2,
-                        )
-                        height = gr.Slider(
-                            label="Height",
-                            minimum=256,
-                            maximum=1024,
-                            value=576,
-                            step=32,
-                            scale=2,
-                        )
-
-                    with gr.Row():
-                        guidance_scale = gr.Slider(
-                            label="Guidance Scale",
-                            minimum=1.0,
-                            maximum=15.0,
-                            value=7,
-                            step=0.1,
-                        )
-                        inference_steps = gr.Slider(
-                            label="Inference Steps",
-                            minimum=1,
-                            maximum=50,
-                            value=30,
-                            step=1,
-                        )
-
-                    with gr.Row():
-                        model = gr.Dropdown(
-                            value="Lykon/dreamshaper-8",
-                            filterable=False,
-                            min_width=200,
-                            label="Model",
-                            scale=2,
-                            choices=[
-                                "fluently/Fluently-v4",
-                                "Linaqruf/anything-v3-1",
-                                "Lykon/dreamshaper-8",
-                                "prompthero/openjourney-v4",
-                                "runwayml/stable-diffusion-v1-5",
-                                "SG161222/Realistic_Vision_V5.1_Novae",
-                            ],
                         )
                         scheduler = gr.Dropdown(
                             elem_id="scheduler",
                             label="Scheduler",
                             filterable=False,
-                            value="DEIS 2M",
+                            value=cfg.SCHEDULER,
                             min_width=200,
-                            scale=2,
-                            choices=[
-                                "DEIS 2M",
-                                "DPM++ 2M",
-                                "DPM2 a",
-                                "Euler a",
-                                "Heun",
-                                "LMS",
-                                "PNDM",
-                            ],
+                            scale=1,
+                            choices=cfg.SCHEDULERS,
                         )
-                        seed = gr.Number(label="Seed", value=0, scale=1)
+
+                    with gr.Row():
+                        guidance_scale = gr.Slider(
+                            value=cfg.GUIDANCE_SCALE,
+                            label="Guidance Scale",
+                            minimum=1.0,
+                            maximum=15.0,
+                            scale=1,
+                            step=0.1,
+                        )
+                        inference_steps = gr.Slider(
+                            value=cfg.INFERENCE_STEPS,
+                            label="Inference Steps",
+                            minimum=1,
+                            maximum=50,
+                            scale=1,
+                            step=1,
+                        )
+                        seed = gr.Number(
+                            value=cfg.SEED,
+                            label="Seed",
+                            minimum=-1,
+                            maximum=(2**64) - 1,
+                            scale=1,
+                        )
+
+                    with gr.Row():
+                        width = gr.Slider(
+                            value=cfg.WIDTH,
+                            label="Width",
+                            minimum=256,
+                            maximum=1024,
+                            step=32,
+                            scale=1,
+                        )
+                        height = gr.Slider(
+                            value=cfg.HEIGHT,
+                            label="Height",
+                            minimum=256,
+                            maximum=1024,
+                            step=32,
+                            scale=1,
+                        )
+                        num_images = gr.Dropdown(
+                            choices=list(range(1, 5)),
+                            value=cfg.NUM_IMAGES,
+                            filterable=False,
+                            label="Images",
+                            scale=1,
+                        )
 
                     with gr.Row():
                         use_karras = gr.Checkbox(
@@ -177,24 +174,24 @@ with gr.Blocks(
                             elem_classes=["checkbox"],
                             label="Autoincrement",
                             value=True,
-                            scale=4,
+                            scale=3,
                         )
 
             with gr.TabItem("🛠️ Advanced"):
                 with gr.Group():
                     with gr.Row():
                         deepcache_interval = gr.Slider(
+                            value=cfg.DEEPCACHE_INTERVAL,
                             label="DeepCache Interval",
                             minimum=1,
                             maximum=4,
-                            value=2,
                             step=1,
                         )
                         tgate_step = gr.Slider(
+                            maximum=cfg.INFERENCE_STEPS,
+                            value=cfg.TGATE_STEP,
                             label="T-GATE Step",
                             minimum=0,
-                            maximum=30,
-                            value=0,
                             step=1,
                         )
 
@@ -206,10 +203,10 @@ with gr.Blocks(
                             value="png",
                         )
                         tome_ratio = gr.Slider(
+                            value=cfg.TOME_RATIO,
                             label="ToMe Ratio",
                             minimum=0.0,
                             maximum=0.5,
-                            value=0.0,
                             step=0.01,
                         )
 
@@ -275,8 +272,15 @@ with gr.Blocks(
             scale=1,
         )
 
-    # update the random seed using JavaScript
-    random_btn.click(None, outputs=[seed], js=SEED_JS)
+    # update the seed using JavaScript
+    random_btn.click(None, outputs=[seed], js=random_seed_js)
+
+    seed.change(
+        None,
+        inputs=[seed],
+        outputs=[],
+        js=seed_js,
+    )
 
     file_format.change(
         lambda f: gr.Gallery(format=f),
@@ -299,6 +303,7 @@ with gr.Blocks(
         inputs=[
             prompt,
             negative_prompt,
+            style,
             seed,
             model,
             scheduler,

@@ -1,5 +1,6 @@
 import argparse
 
+import config as cfg
 from generate import generate
 
 
@@ -10,31 +11,35 @@ def save_images(images, filename="image.png"):
 
 
 def main():
+    # fmt: off
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("prompt", type=str, metavar="PROMPT")
-    parser.add_argument("-n", "--negative", type=str, metavar="STR", default="<fast_negative>")
-    parser.add_argument("-s", "--seed", type=int, metavar="INT")
+    parser.add_argument("-n", "--negative", type=str, metavar="STR", default=cfg.NEGATIVE_PROMPT)
+    parser.add_argument("-s", "--seed", type=int, metavar="INT", default=cfg.SEED)
     parser.add_argument("-i", "--images", type=int, metavar="INT", default=1)
     parser.add_argument("-f", "--filename", type=str, metavar="STR", default="image.png")
-    parser.add_argument("-w", "--width", type=int, metavar="INT", default=448)
-    parser.add_argument("-h", "--height", type=int, metavar="INT", default=576)
-    parser.add_argument("-m", "--model", type=str, metavar="STR", default="Lykon/dreamshaper-8")
-    parser.add_argument("-d", "--deepcache", type=int, metavar="INT", default=2)
-    parser.add_argument("-t", "--tgate", type=int, metavar="INT", default=20)
-    parser.add_argument("--scheduler", type=str, metavar="STR", default="DEIS 2M")
-    parser.add_argument("--guidance", type=float, metavar="FLOAT", default=7)
-    parser.add_argument("--steps", type=int, metavar="INT", default=30)
-    parser.add_argument("--tome", type=float, metavar="FLOAT", default=0.0)
+    parser.add_argument("-w", "--width", type=int, metavar="INT", default=cfg.WIDTH)
+    parser.add_argument("-h", "--height", type=int, metavar="INT", default=cfg.HEIGHT)
+    parser.add_argument("-m", "--model", type=str, metavar="STR", default=cfg.MODEL)
+    parser.add_argument("-d", "--deepcache", type=int, metavar="INT", default=cfg.DEEPCACHE_INTERVAL)
+    parser.add_argument("-t", "--tgate", type=int, metavar="INT", default=cfg.TGATE_STEP)
+    parser.add_argument("--style", type=str, metavar="STR", default=cfg.STYLE)
+    parser.add_argument("--scheduler", type=str, metavar="STR", default=cfg.SCHEDULER)
+    parser.add_argument("--guidance", type=float, metavar="FLOAT", default=cfg.GUIDANCE_SCALE)
+    parser.add_argument("--steps", type=int, metavar="INT", default=cfg.INFERENCE_STEPS)
+    parser.add_argument("--tome", type=float, metavar="FLOAT", default=cfg.TOME_RATIO)
     parser.add_argument("--taesd", action="store_true")
     parser.add_argument("--clip-skip", action="store_true")
     parser.add_argument("--truncate", action="store_true")
-    parser.add_argument("--no-karras", action="store_false")
+    parser.add_argument("--karras", action="store_true")
     parser.add_argument("--no-increment", action="store_false")
+    # fmt: on
 
     args = parser.parse_args()
     images = generate(
         args.prompt,
         args.negative,
+        args.style,
         args.seed,
         args.model,
         args.scheduler,
@@ -43,7 +48,7 @@ def main():
         args.guidance,
         args.steps,
         args.images,
-        args.no_karras,
+        args.karras,
         args.taesd,
         args.clip_skip,
         args.truncate,
