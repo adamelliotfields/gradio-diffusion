@@ -83,8 +83,8 @@ with gr.Blocks(
             with gr.TabItem("⚙️ Settings"):
                 with gr.Group():
                     negative_prompt = gr.Textbox(
-                        label="Negative Prompt",
                         value=cfg.NEGATIVE_PROMPT,
+                        label="Negative Prompt",
                         placeholder="ugly, bad",
                         lines=2,
                     )
@@ -98,16 +98,16 @@ with gr.Blocks(
 
                     with gr.Row():
                         style = gr.Dropdown(
-                            label="Style",
-                            choices=["None"] + [f"{style['name']}" for style in styles],
                             value=cfg.STYLE,
+                            label="Style",
                             scale=1,
+                            choices=["None"] + [f"{style['name']}" for style in styles],
                         )
                         scheduler = gr.Dropdown(
+                            value=cfg.SCHEDULER,
                             elem_id="scheduler",
                             label="Scheduler",
                             filterable=False,
-                            value=cfg.SCHEDULER,
                             min_width=200,
                             scale=1,
                             choices=cfg.SCHEDULERS,

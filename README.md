@@ -3,8 +3,8 @@
 title: Diffusion Zero
 short_description: Image generation studio on ZeroGPU
 emoji: 🧨
-colorFrom: blue
-colorTo: purple
+colorFrom: purple
+colorTo: blue
 sdk: gradio
 sdk_version: 4.39.0
 python_version: 3.11.9
@@ -65,7 +65,6 @@ python cli.py 'an astronaut riding a horse on mars'
 
 ## TODO
 
-- [ ] Styles
 - [ ] Hires fix
 - [ ] Support LoRA
 - [ ] Metadata embed and display
