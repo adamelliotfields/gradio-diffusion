@@ -1,3 +1,4 @@
+import json
 import re
 import time
 from contextlib import contextmanager
@@ -44,6 +45,9 @@ EMBEDDINGS = {
     "./embeddings/negative_hand.pt": "<negative_hand>",
     "./embeddings/UnrealisticDream.pt": "<unrealistic_dream>",
 }
+
+with open("./styles/twri.json") as f:
+    styles = json.load(f)
 
 
 # inspired by ComfyUI
@@ -225,20 +229,34 @@ def parse_prompt(prompt: str) -> list[str]:
     return prompts
 
 
+def apply_style(prompt, style_name, negative=False):
+    global styles
+    if not style_name or style_name == "None":
+        return prompt
+    for style in styles:
+        if style["name"] == style_name:
+            if negative:
+                return prompt + " . " + style["negative_prompt"]
+            else:
+                return style["prompt"].format(prompt=prompt)
+    return prompt
+
+
 # 1024x1024 for 50 steps can take ~10s each
 @spaces.GPU(duration=44)
 def generate(
     positive_prompt,
     negative_prompt="",
+    style=None,
     seed=None,
-    model="Lykon/dreamshaper-8",
-    scheduler="DEIS 2M",
+    model="runwayml/stable-diffusion-v1-5",
+    scheduler="PNDM",
     width=512,
     height=512,
     guidance_scale=7.5,
-    inference_steps=30,
+    inference_steps=50,
     num_images=1,
-    karras=True,
+    karras=False,
     taesd=False,
     clip_skip=False,
     truncate_prompts=False,
@@ -252,8 +270,9 @@ def generate(
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
 
-    if seed is None:
-        seed = int(datetime.now().timestamp())
+    # https://pytorch.org/docs/stable/generated/torch.manual_seed.html
+    if seed is None or seed < 0:
+        seed = int(datetime.now().timestamp() * 1_000_000) % (2**64)
 
     TORCH_DTYPE = (
         torch.bfloat16
@@ -287,7 +306,8 @@ def generate(
         current_seed = seed
 
         try:
-            neg_embeds = compel(negative_prompt)
+            styled_negative_prompt = apply_style(negative_prompt, style, negative=True)
+            neg_embeds = compel(styled_negative_prompt)
         except PromptParser.ParsingException:
             raise Error("ParsingException: Invalid negative prompt")
 
@@ -299,7 +319,8 @@ def generate(
                 all_positive_prompts = parse_prompt(positive_prompt)
                 prompt_index = i % len(all_positive_prompts)
                 pos_prompt = all_positive_prompts[prompt_index]
-                pos_embeds = compel(pos_prompt)
+                styled_pos_prompt = apply_style(pos_prompt, style)
+                pos_embeds = compel(styled_pos_prompt)
                 pos_embeds, neg_embeds = compel.pad_conditioning_tensors_to_same_length(
                     [pos_embeds, neg_embeds]
                 )

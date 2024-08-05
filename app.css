@@ -62,8 +62,8 @@
   content: 'Clear gallery';
 }
 .icon-button#random:hover::after {
-  /* set seed via JS */
-  content: var(--seed, "0");
+  /* see config.py for default seed */
+  content: var(--seed, "-1");
 }
 
 #intro {
@@ -99,7 +99,7 @@
   border-width: 0px;
 }
 .tabitem {
-  max-height: 488px;
+  max-height: 516px;
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0 0 8px;

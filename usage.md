@@ -22,15 +22,19 @@ Start with a [textual inversion](https://huggingface.co/docs/diffusers/en/using-
 * [`<bad_dream>`](https://civitai.com/models/72437?modelVersionId=77169)
 * [`<unrealistic_dream>`](https://civitai.com/models/72437?modelVersionId=77173)
 
-And iterate from there. You can use weighting in the negative prompt as well.
+And add to it. You can use weighting in the negative prompt as well.
 
 #### Arrays
 
-Arrays allow you to generate different images from a single prompt. For example, `man, [[blue,blue+,blue++]] eyes` will expand into 3 separate prompts. Make sure `Images` is set accordingly (e.g., 3). Only works for the positive prompt. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
+Arrays allow you to generate different images from a single prompt. For example, `[[cat,corgi]]` will expand into 2 separate prompts. Make sure `Images` is set accordingly (e.g., 2). Only works for the positive prompt. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
 
-When using arrays, you should disable `Autoincrement` so the same seed is used for each generation.
+### Styles
+
+Styles are prompt templates from twri's [sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node. Start with a subject like "cat", pick a style, and iterate from there.
 
 ### Models
+
+Each model checkpoint has a different aesthetic:
 
 * [lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8): general purpose (default)
 * [fluently/fluently-v4](https://huggingface.co/fluently/Fluently-v4): general purpose merge
