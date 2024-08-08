@@ -41,9 +41,12 @@
 
 .icon-button {
   max-width: 42px;
+}
+
+.popover {
   position: relative;
 }
-.icon-button:hover::after {
+.popover:hover::after {
   white-space: nowrap;
   position: absolute;
   left: 50%;
@@ -58,10 +61,10 @@
   font-weight: var(--section-header-text-weight);
   font-size: var(--section-header-text-size);
 }
-.icon-button#clear:hover::after {
+.popover#clear:hover::after {
   content: 'Clear gallery';
 }
-.icon-button#random:hover::after {
+.popover#random:hover::after {
   /* see config.py for default seed */
   content: var(--seed, "-1");
 }

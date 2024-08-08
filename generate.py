@@ -166,7 +166,7 @@ class Loader:
                 self.pipe = None
                 torch.cuda.empty_cache()
 
-        # no fp16 available
+        # no fp16 variant
         if not ZERO_GPU and model_lower not in [
             "sg161222/realistic_vision_v5.1_novae",
             "prompthero/openjourney-v4",
@@ -225,12 +225,12 @@ def parse_prompt(prompt: str) -> list[str]:
     return prompts
 
 
-def apply_style(prompt, style_name, negative=False):
+def apply_style(prompt, style_id, negative=False):
     global styles
-    if not style_name or style_name == "None":
+    if not style_id or style_id == "None":
         return prompt
     for style in styles:
-        if style["name"] == style_name:
+        if style["id"] == style_id:
             if negative:
                 return prompt + " . " + style["negative_prompt"]
             else:

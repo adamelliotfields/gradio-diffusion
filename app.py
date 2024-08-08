@@ -100,7 +100,8 @@ with gr.Blocks(
                         style = gr.Dropdown(
                             value=cfg.STYLE,
                             label="Style",
-                            choices=["None"] + [f"{style['name']}" for style in styles],
+                            choices=[("None", None)]
+                            + [(style["name"], style["id"]) for style in styles],
                         )
                         scheduler = gr.Dropdown(
                             value=cfg.SCHEDULER,
@@ -169,6 +170,7 @@ with gr.Blocks(
                             scale=1,
                         )
                         upscale_4x = gr.Checkbox(
+                            interactive=cfg.NUM_IMAGES == 1,
                             elem_classes=["checkbox"],
                             label="Upscale 4x",
                             value=False,
@@ -241,7 +243,7 @@ with gr.Blocks(
     with gr.Row():
         generate_btn = gr.Button("Generate", variant="primary", scale=6, elem_classes=[])
         random_btn = gr.Button(
-            elem_classes=["icon-button"],
+            elem_classes=["icon-button", "popover"],
             variant="secondary",
             elem_id="random",
             min_width=0,
@@ -249,7 +251,7 @@ with gr.Blocks(
             scale=1,
         )
         clear_btn = gr.ClearButton(
-            elem_classes=["icon-button"],
+            elem_classes=["icon-button", "popover"],
             components=[output_images],
             variant="secondary",
             elem_id="clear",
@@ -266,6 +268,12 @@ with gr.Blocks(
         inputs=[seed],
         outputs=[],
         js=seed_js,
+    )
+
+    num_images.change(
+        lambda n, upscale: gr.Checkbox(interactive=n == 1, value=upscale if n == 1 else False),
+        inputs=[num_images, upscale_4x],
+        outputs=[upscale_4x],
     )
 
     file_format.change(

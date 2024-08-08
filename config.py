@@ -8,6 +8,7 @@ SANS_FONTS = [
     "Noto Color Emoji",
 ]
 
+# embeddings loaded and renamed in generate.py
 NEGATIVE_PROMPT = "<fast_negative>"
 
 MODEL = "Lykon/dreamshaper-8"
@@ -33,7 +34,7 @@ SCHEDULERS = [
     "PNDM",
 ]
 
-STYLE = "None"
+STYLE = "sai-enhance"
 
 WIDTH = 448
 
