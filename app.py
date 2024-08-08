@@ -180,27 +180,18 @@ with gr.Blocks(
             with gr.TabItem("🛠️ Advanced"):
                 with gr.Group():
                     with gr.Row():
+                        file_format = gr.Dropdown(
+                            choices=["png", "jpeg", "webp"],
+                            label="File Format",
+                            filterable=False,
+                            value="png",
+                        )
                         deepcache_interval = gr.Slider(
                             value=cfg.DEEPCACHE_INTERVAL,
                             label="DeepCache Interval",
                             minimum=1,
                             maximum=4,
                             step=1,
-                        )
-                        tgate_step = gr.Slider(
-                            maximum=cfg.INFERENCE_STEPS,
-                            value=cfg.TGATE_STEP,
-                            label="T-GATE Step",
-                            minimum=0,
-                            step=1,
-                        )
-
-                    with gr.Row():
-                        file_format = gr.Dropdown(
-                            choices=["png", "jpeg", "webp"],
-                            label="File Format",
-                            filterable=False,
-                            value="png",
                         )
                         tome_ratio = gr.Slider(
                             value=cfg.TOME_RATIO,
@@ -227,7 +218,7 @@ with gr.Blocks(
                             elem_classes=["checkbox"],
                             label="Truncate prompts",
                             value=False,
-                            scale=3,
+                            scale=1,
                         )
 
             with gr.TabItem("ℹ️ Usage"):
@@ -288,12 +279,6 @@ with gr.Blocks(
         outputs=[output_images],
     )
 
-    inference_steps.change(
-        lambda max, step: gr.Slider(maximum=max, value=min(max, step)),
-        inputs=[inference_steps, tgate_step],
-        outputs=[tgate_step],
-    )
-
     gr.on(
         triggers=[generate_btn.click, prompt.submit],
         fn=handle_generate,
@@ -318,7 +303,6 @@ with gr.Blocks(
             truncate_prompts,
             increment_seed,
             deepcache_interval,
-            tgate_step,
             tome_ratio,
         ],
     )

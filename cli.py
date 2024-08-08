@@ -22,7 +22,6 @@ def main():
     parser.add_argument("-h", "--height", type=int, metavar="INT", default=cfg.HEIGHT)
     parser.add_argument("-m", "--model", type=str, metavar="STR", default=cfg.MODEL)
     parser.add_argument("-d", "--deepcache", type=int, metavar="INT", default=cfg.DEEPCACHE_INTERVAL)
-    parser.add_argument("-t", "--tgate", type=int, metavar="INT", default=cfg.TGATE_STEP)
     parser.add_argument("--style", type=str, metavar="STR", default=cfg.STYLE)
     parser.add_argument("--scheduler", type=str, metavar="STR", default=cfg.SCHEDULER)
     parser.add_argument("--guidance", type=float, metavar="FLOAT", default=cfg.GUIDANCE_SCALE)
@@ -54,7 +53,6 @@ def main():
         args.truncate,
         args.no_increment,
         args.deepcache,
-        args.tgate,
         args.tome,
     )
     save_images(images, args.filename)

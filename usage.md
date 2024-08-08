@@ -65,10 +65,6 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 * `3`: balanced
 * `4`: more speed
 
-#### T-GATE
-
-[Temporal gating](https://github.com/HaozheLiu-ST/T-GATE) (Zhang et al. 2024) caches self and cross attention computations up to `Step`. Afterwards, attention is no longer computed and the cache is used, resulting in a noticeable speedup.
-
 #### ToMe
 
 [Token merging](https://arxiv.org/abs/2303.17604) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.

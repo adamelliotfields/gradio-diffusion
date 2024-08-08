@@ -25,8 +25,6 @@ from diffusers import (
     StableDiffusionPipeline,
 )
 from diffusers.models import AutoencoderKL, AutoencoderTiny
-from tgate.SD import tgate as tgate_sd
-from tgate.SD_DeepCache import tgate as tgate_sd_deepcache
 from torch._dynamo import OptimizedModule
 
 # some models use the deprecated CLIPFeatureExtractor class (should use CLIPImageProcessor)
@@ -76,17 +74,6 @@ class Loader:
         self.pipe.deepcache.set_params(cache_interval=interval)
         self.pipe.deepcache.enable()
         return self.pipe.deepcache
-
-    def _load_tgate(self):
-        has_tgate = hasattr(self.pipe, "tgate")
-        has_deepcache = hasattr(self.pipe, "deepcache")
-
-        if not has_tgate:
-            self.pipe.tgate = MethodType(
-                tgate_sd_deepcache if has_deepcache else tgate_sd,
-                self.pipe,
-            )
-        return self.pipe.tgate
 
     def _load_vae(self, model_name=None, taesd=False, dtype=None):
         vae_type = type(self.pipe.vae)
@@ -172,7 +159,6 @@ class Loader:
 
                 self._load_vae(model_lower, taesd, dtype)
                 self._load_deepcache(interval=deepcache_interval)
-                self._load_tgate()
                 return self.pipe
             else:
                 print(f"Unloading {model_name.lower()}...")
@@ -189,13 +175,12 @@ class Loader:
 
         print(f"Loading {model_lower} with {'Tiny' if taesd else 'KL'} VAE...")
         self.pipe = StableDiffusionPipeline.from_pretrained(**pipe_kwargs).to(self.gpu)
-        self._load_vae(model_lower, taesd, dtype)
-        self._load_deepcache(interval=deepcache_interval)
-        self._load_tgate()
         self.pipe.load_textual_inversion(
             pretrained_model_name_or_path=list(EMBEDDINGS.keys()),
             tokens=list(EMBEDDINGS.values()),
         )
+        self._load_vae(model_lower, taesd, dtype)
+        self._load_deepcache(interval=deepcache_interval)
         return self.pipe
 
 
@@ -262,7 +247,6 @@ def generate(
     truncate_prompts=False,
     increment_seed=True,
     deepcache_interval=1,
-    tgate_step=0,
     tome_ratio=0,
     log: Callable[[str], None] = None,
     Error=Exception,
@@ -328,17 +312,11 @@ def generate(
                 raise Error("ParsingException: Invalid prompt")
 
             with token_merging(pipe, tome_ratio=tome_ratio):
-                # cap the tgate step
-                gate_step = min(
-                    tgate_step if tgate_step > 0 else inference_steps,
-                    inference_steps,
-                )
-                result = pipe.tgate(
+                result = pipe(
                     num_inference_steps=inference_steps,
                     negative_prompt_embeds=neg_embeds,
                     guidance_scale=guidance_scale,
                     prompt_embeds=pos_embeds,
-                    gate_step=gate_step,
                     generator=generator,
                     height=height,
                     width=width,
