@@ -273,7 +273,7 @@ def generate(
 
     TORCH_DTYPE = (
         torch.bfloat16
-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported(including_emulation=False)
+        if torch.cuda.is_available() and torch.cuda.get_device_properties(GPU).major >= 8
         else torch.float16
     )
 
