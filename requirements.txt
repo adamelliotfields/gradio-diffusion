@@ -1,4 +1,5 @@
 accelerate
+aura-sr==0.0.4
 compel
 deepcache==0.1.1
 diffusers

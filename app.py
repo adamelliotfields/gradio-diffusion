@@ -100,7 +100,6 @@ with gr.Blocks(
                         style = gr.Dropdown(
                             value=cfg.STYLE,
                             label="Style",
-                            scale=1,
                             choices=["None"] + [f"{style['name']}" for style in styles],
                         )
                         scheduler = gr.Dropdown(
@@ -109,7 +108,6 @@ with gr.Blocks(
                             label="Scheduler",
                             filterable=False,
                             min_width=200,
-                            scale=1,
                             choices=cfg.SCHEDULERS,
                         )
 
@@ -119,7 +117,6 @@ with gr.Blocks(
                             label="Guidance Scale",
                             minimum=1.0,
                             maximum=15.0,
-                            scale=1,
                             step=0.1,
                         )
                         inference_steps = gr.Slider(
@@ -127,7 +124,6 @@ with gr.Blocks(
                             label="Inference Steps",
                             minimum=1,
                             maximum=50,
-                            scale=1,
                             step=1,
                         )
                         seed = gr.Number(
@@ -135,32 +131,28 @@ with gr.Blocks(
                             label="Seed",
                             minimum=-1,
                             maximum=(2**64) - 1,
-                            scale=1,
                         )
 
                     with gr.Row():
                         width = gr.Slider(
                             value=cfg.WIDTH,
                             label="Width",
-                            minimum=256,
-                            maximum=1024,
+                            minimum=320,
+                            maximum=768,
                             step=32,
-                            scale=1,
                         )
                         height = gr.Slider(
                             value=cfg.HEIGHT,
                             label="Height",
-                            minimum=256,
-                            maximum=1024,
+                            minimum=320,
+                            maximum=768,
                             step=32,
-                            scale=1,
                         )
                         num_images = gr.Dropdown(
                             choices=list(range(1, 5)),
                             value=cfg.NUM_IMAGES,
                             filterable=False,
                             label="Images",
-                            scale=1,
                         )
 
                     with gr.Row():
@@ -174,6 +166,12 @@ with gr.Blocks(
                             elem_classes=["checkbox"],
                             label="Autoincrement",
                             value=True,
+                            scale=1,
+                        )
+                        upscale_4x = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="Upscale 4x",
+                            value=False,
                             scale=3,
                         )
 
@@ -206,19 +204,16 @@ with gr.Blocks(
                             elem_classes=["checkbox"],
                             label="Tiny VAE",
                             value=False,
-                            scale=1,
                         )
                         use_clip_skip = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Clip skip",
                             value=False,
-                            scale=1,
                         )
                         truncate_prompts = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Truncate prompts",
                             value=False,
-                            scale=1,
                         )
 
             with gr.TabItem("ℹ️ Usage"):
@@ -304,6 +299,7 @@ with gr.Blocks(
             increment_seed,
             deepcache_interval,
             tome_ratio,
+            upscale_4x,
         ],
     )
 

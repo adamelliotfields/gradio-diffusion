@@ -1,3 +1,5 @@
+# CLI
+# usage: python cli.py 'colorful calico cat artstation'
 import argparse
 
 import config as cfg
@@ -31,6 +33,7 @@ def main():
     parser.add_argument("--clip-skip", action="store_true")
     parser.add_argument("--truncate", action="store_true")
     parser.add_argument("--karras", action="store_true")
+    parser.add_argument("--upscale", action="store_true")
     parser.add_argument("--no-increment", action="store_false")
     # fmt: on
 
@@ -54,6 +57,7 @@ def main():
         args.no_increment,
         args.deepcache,
         args.tome,
+        args.upscale,
     )
     save_images(images, args.filename)
 

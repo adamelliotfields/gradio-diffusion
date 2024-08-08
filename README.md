@@ -43,7 +43,14 @@ preload_from_hub:
 
 # diffusion
 
-Gradio-based UI for Stable Diffusion pipelines.
+Gradio app for Stable Diffusion 1.5 including:
+* curated models and TI embeddings
+* multiple samplers with Karras schedule
+* Compel prompting
+* 100+ styles from sdxl_prompt_styler
+* AuraSR GAN
+* DeepCache and ToMe
+* optional TAESD
 
 ## Usage
 
@@ -65,8 +72,5 @@ python cli.py 'an astronaut riding a horse on mars'
 
 ## TODO
 
-- [ ] Hires fix
-- [ ] Support LoRA
 - [ ] Metadata embed and display
 - [ ] Image-to-image
-- [ ] Latent preview

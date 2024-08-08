@@ -1,16 +1,16 @@
 import json
+import os
 import re
 import time
 from contextlib import contextmanager
 from datetime import datetime
 from itertools import product
-from os import environ
-from types import MethodType
 from typing import Callable
 
 import spaces
 import tomesd
 import torch
+from aura_sr import AuraSR
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from DeepCache import DeepCacheSDHelper
@@ -27,13 +27,13 @@ from diffusers import (
 from diffusers.models import AutoencoderKL, AutoencoderTiny
 from torch._dynamo import OptimizedModule
 
-# some models use the deprecated CLIPFeatureExtractor class (should use CLIPImageProcessor)
+__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="diffusers")
 __import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
 __import__("transformers").logging.set_verbosity_error()
 
 ZERO_GPU = (
-    environ.get("SPACES_ZERO_GPU", "").lower() == "true"
-    or environ.get("SPACES_ZERO_GPU", "") == "1"
+    os.environ.get("SPACES_ZERO_GPU", "").lower() == "true"
+    or os.environ.get("SPACES_ZERO_GPU", "") == "1"
 )
 
 EMBEDDINGS = {
@@ -58,6 +58,7 @@ class Loader:
             cls._instance = super(Loader, cls).__new__(cls)
             cls._instance.cpu = torch.device("cpu")
             cls._instance.gpu = torch.device("cuda")
+            cls._instance.gan = None
             cls._instance.pipe = None
         return cls._instance
 
@@ -105,7 +106,7 @@ class Loader:
             )
         return self.pipe.vae
 
-    def load(self, model, scheduler, karras, taesd, deepcache_interval, dtype=None):
+    def load(self, model, scheduler, karras, taesd, deepcache_interval, upscale, dtype=None):
         model_lower = model.lower()
 
         schedulers = {
@@ -127,7 +128,7 @@ class Loader:
             "steps_offset": 1,
         }
 
-        if scheduler == "PNDM" or scheduler == "Euler a":
+        if scheduler in ["Euler a", "PNDM"]:
             del scheduler_kwargs["use_karras_sigmas"]
 
         pipe_kwargs = {
@@ -159,7 +160,7 @@ class Loader:
 
                 self._load_vae(model_lower, taesd, dtype)
                 self._load_deepcache(interval=deepcache_interval)
-                return self.pipe
+                return self.pipe, self.gan
             else:
                 print(f"Unloading {model_name.lower()}...")
                 self.pipe = None
@@ -181,7 +182,17 @@ class Loader:
         )
         self._load_vae(model_lower, taesd, dtype)
         self._load_deepcache(interval=deepcache_interval)
-        return self.pipe
+
+        if upscale and self.gan is None:
+            print("Loading fal/AuraSR-v2...")
+            self.gan = AuraSR.from_pretrained("fal/AuraSR-v2")
+
+        if not upscale and self.gan is not None:
+            print("Unloading fal/AuraSR-v2...")
+            self.gan = None
+            torch.cuda.empty_cache
+
+        return self.pipe, self.gan
 
 
 # applies tome to the pipeline
@@ -227,8 +238,7 @@ def apply_style(prompt, style_name, negative=False):
     return prompt
 
 
-# 1024x1024 for 50 steps can take ~10s each
-@spaces.GPU(duration=44)
+@spaces.GPU(duration=40)
 def generate(
     positive_prompt,
     negative_prompt="",
@@ -248,6 +258,7 @@ def generate(
     increment_seed=True,
     deepcache_interval=1,
     tome_ratio=0,
+    upscale=False,
     log: Callable[[str], None] = None,
     Error=Exception,
 ):
@@ -258,9 +269,11 @@ def generate(
     if seed is None or seed < 0:
         seed = int(datetime.now().timestamp() * 1_000_000) % (2**64)
 
+    GPU = torch.device("cuda")
+
     TORCH_DTYPE = (
         torch.bfloat16
-        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported(including_emulation=False)
         else torch.float16
     )
 
@@ -273,7 +286,15 @@ def generate(
     with torch.inference_mode():
         start = time.perf_counter()
         loader = Loader()
-        pipe = loader.load(model, scheduler, karras, taesd, deepcache_interval, TORCH_DTYPE)
+        pipe, gan = loader.load(
+            model,
+            scheduler,
+            karras,
+            taesd,
+            deepcache_interval,
+            upscale,
+            TORCH_DTYPE,
+        )
 
         # prompt embeds
         compel = Compel(
@@ -283,7 +304,7 @@ def generate(
             truncate_long_prompts=truncate_prompts,
             text_encoder=pipe.text_encoder,
             tokenizer=pipe.tokenizer,
-            device=pipe.device,
+            device=GPU,
         )
 
         images = []
@@ -297,7 +318,7 @@ def generate(
 
         for i in range(num_images):
             # seeded generator for each iteration
-            generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
+            generator = torch.Generator(device=GPU).manual_seed(current_seed)
 
             try:
                 all_positive_prompts = parse_prompt(positive_prompt)
@@ -312,7 +333,7 @@ def generate(
                 raise Error("ParsingException: Invalid prompt")
 
             with token_merging(pipe, tome_ratio=tome_ratio):
-                result = pipe(
+                image = pipe(
                     num_inference_steps=inference_steps,
                     negative_prompt_embeds=neg_embeds,
                     guidance_scale=guidance_scale,
@@ -320,8 +341,14 @@ def generate(
                     generator=generator,
                     height=height,
                     width=width,
-                )
-                images.append((result.images[0], str(current_seed)))
+                ).images[0]
+
+                if upscale:
+                    print("Upscaling image...")
+                    batch_size = 12 if ZERO_GPU else 4  # smaller batch to fit in 8GB
+                    image = gan.upscale_4x_overlapped(image, max_batch_size=batch_size)
+
+                images.append((image, str(current_seed)))
 
             if increment_seed:
                 current_seed += 1
@@ -329,9 +356,9 @@ def generate(
         if ZERO_GPU:
             # spaces always start fresh
             loader.pipe = None
+            loader.gan = None
 
-        end = time.perf_counter()
-        diff = end - start
+        diff = time.perf_counter() - start
         if log:
             log(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
         return images
