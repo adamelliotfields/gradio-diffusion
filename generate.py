@@ -10,7 +10,6 @@ from typing import Callable
 import spaces
 import tomesd
 import torch
-from aura_sr import AuraSR
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from DeepCache import DeepCacheSDHelper
@@ -56,7 +55,6 @@ class Loader:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Loader, cls).__new__(cls)
-            cls._instance.gan = None
             cls._instance.pipe = None
         return cls._instance
 
@@ -102,7 +100,7 @@ class Loader:
                 model=model,
             )
 
-    def load(self, model, scheduler, karras, taesd, deepcache_interval, upscale, dtype, device):
+    def load(self, model, scheduler, karras, taesd, deepcache_interval, dtype, device):
         model_lower = model.lower()
 
         schedulers = {
@@ -156,10 +154,6 @@ class Loader:
                 or self.pipe.scheduler.config.use_karras_sigmas == karras
             )
 
-            if upscale and not self.gan:
-                print("Loading fal/AuraSR-v2...")
-                self.gan = AuraSR.from_pretrained("fal/AuraSR-v2")
-
             if same_model:
                 if not same_scheduler:
                     print(f"Switching to {scheduler}...")
@@ -169,7 +163,7 @@ class Loader:
                     self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
                 self._load_vae(model_lower, taesd, variant)
                 self._load_deepcache(interval=deepcache_interval)
-                return self.pipe, self.gan
+                return self.pipe
             else:
                 print(f"Unloading {model_name.lower()}...")
                 self.pipe = None
@@ -186,16 +180,8 @@ class Loader:
         self._load_vae(model_lower, taesd, variant)
         self._load_deepcache(interval=deepcache_interval)
 
-        if upscale and self.gan is None:
-            print("Loading fal/AuraSR-v2...")
-            self.gan = AuraSR.from_pretrained("fal/AuraSR-v2")
-
-        if not upscale and self.gan is not None:
-            print("Unloading fal/AuraSR-v2...")
-            self.gan = None
-
         torch.cuda.empty_cache()
-        return self.pipe, self.gan
+        return self.pipe
 
 
 # applies tome to the pipeline
@@ -261,7 +247,6 @@ def generate(
     increment_seed=True,
     deepcache_interval=1,
     tome_ratio=0,
-    upscale=False,
     log: Callable[[str], None] = None,
     Error=Exception,
 ):
@@ -289,13 +274,12 @@ def generate(
     with torch.inference_mode():
         start = time.perf_counter()
         loader = Loader()
-        pipe, gan = loader.load(
+        pipe = loader.load(
             model,
             scheduler,
             karras,
             taesd,
             deepcache_interval,
-            upscale,
             DTYPE,
             DEVICE,
         )
@@ -347,10 +331,6 @@ def generate(
                         height=height,
                         width=width,
                     ).images[0]
-                    if upscale:
-                        print("Upscaling image...")
-                        batch_size = 12 if ZERO_GPU else 4  # smaller batch to fit in 8GB
-                        image = gan.upscale_4x_overlapped(image, max_batch_size=batch_size)
                     images.append((image, str(current_seed)))
                 finally:
                     if not ZERO_GPU:
@@ -362,7 +342,6 @@ def generate(
         if ZERO_GPU:
             # spaces always start fresh
             loader.pipe = None
-            loader.gan = None
 
         diff = time.perf_counter() - start
         if log:

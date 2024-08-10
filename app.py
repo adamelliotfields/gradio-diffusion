@@ -169,13 +169,6 @@ with gr.Blocks(
                             value=True,
                             scale=1,
                         )
-                        upscale_4x = gr.Checkbox(
-                            interactive=cfg.NUM_IMAGES == 1,
-                            elem_classes=["checkbox"],
-                            label="Upscale 4x",
-                            value=False,
-                            scale=3,
-                        )
 
             with gr.TabItem("🛠️ Advanced"):
                 with gr.Group():
@@ -270,12 +263,6 @@ with gr.Blocks(
         js=seed_js,
     )
 
-    num_images.change(
-        lambda n, upscale: gr.Checkbox(interactive=n == 1, value=upscale if n == 1 else False),
-        inputs=[num_images, upscale_4x],
-        outputs=[upscale_4x],
-    )
-
     file_format.change(
         lambda f: gr.Gallery(format=f),
         inputs=[file_format],
@@ -307,7 +294,6 @@ with gr.Blocks(
             increment_seed,
             deepcache_interval,
             tome_ratio,
-            upscale_4x,
         ],
     )
 

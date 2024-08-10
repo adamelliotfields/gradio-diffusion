@@ -14,7 +14,6 @@ pinned: true
 header: mini
 license: apache-2.0
 models:
-- fal/AuraSR-v2
 - fluently/Fluently-v4
 - Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
@@ -22,9 +21,6 @@ models:
 - runwayml/stable-diffusion-v1-5
 - SG161222/Realistic_Vision_V5.1_noVAE
 preload_from_hub:
-- >-
-  fal/AuraSR-v2
-  config.json,model.safetensors
 - >-
   fluently/Fluently-v4
   text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
@@ -52,7 +48,6 @@ Gradio app for Stable Diffusion 1.5 including:
 * multiple samplers with Karras schedule
 * Compel prompting
 * 100+ styles from sdxl_prompt_styler
-* AuraSR GAN
 * DeepCache and ToMe
 * optional TAESD
 

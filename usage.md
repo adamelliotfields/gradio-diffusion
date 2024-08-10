@@ -55,10 +55,6 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 * [LMS](https://huggingface.co/docs/diffusers/api/schedulers/lms_discrete)
 * [PNDM](https://huggingface.co/docs/diffusers/api/schedulers/pndm)
 
-#### Upscaler
-
-[AuraSR](https://huggingface.co/fal/AuraSR-v2) from [fal.ai](https://fal.ai) can be enabled to upscale your image 4x. It's disabled if `Images` is greater than **1**, so use it once you've finalized your parameters and found a seed.
-
 ### Advanced
 
 #### DeepCache
