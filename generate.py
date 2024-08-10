@@ -56,8 +56,6 @@ class Loader:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Loader, cls).__new__(cls)
-            cls._instance.cpu = torch.device("cpu")
-            cls._instance.gpu = torch.device("cuda")
             cls._instance.gan = None
             cls._instance.pipe = None
         return cls._instance
@@ -66,7 +64,7 @@ class Loader:
         has_deepcache = hasattr(self.pipe, "deepcache")
 
         if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
-            return self.pipe.deepcache
+            return
         if has_deepcache:
             self.pipe.deepcache.disable()
         else:
@@ -74,9 +72,8 @@ class Loader:
 
         self.pipe.deepcache.set_params(cache_interval=interval)
         self.pipe.deepcache.enable()
-        return self.pipe.deepcache
 
-    def _load_vae(self, model_name=None, taesd=False, dtype=None):
+    def _load_vae(self, model_name=None, taesd=False, variant=None):
         vae_type = type(self.pipe.vae)
         is_kl = issubclass(vae_type, (AutoencoderKL, OptimizedModule))
         is_tiny = issubclass(vae_type, AutoencoderTiny)
@@ -88,25 +85,24 @@ class Loader:
             self.pipe.vae = AutoencoderTiny.from_pretrained(
                 pretrained_model_name_or_path="madebyollin/taesd",
                 use_safetensors=True,
-                torch_dtype=dtype,
-            ).to(self.gpu)
-            return self.pipe.vae
+            ).to(device=self.pipe.device)
+            return
 
         if is_tiny and not taesd:
             print("Switching to KL VAE...")
+            model = AutoencoderKL.from_pretrained(
+                pretrained_model_name_or_path=model_name,
+                use_safetensors=True,
+                subfolder="vae",
+                variant=variant,
+            ).to(device=self.pipe.device)
             self.pipe.vae = torch.compile(
-                fullgraph=True,
                 mode="reduce-overhead",
-                model=AutoencoderKL.from_pretrained(
-                    pretrained_model_name_or_path=model_name,
-                    use_safetensors=True,
-                    torch_dtype=dtype,
-                    subfolder="vae",
-                ).to(self.gpu),
+                fullgraph=True,
+                model=model,
             )
-        return self.pipe.vae
 
-    def load(self, model, scheduler, karras, taesd, deepcache_interval, upscale, dtype=None):
+    def load(self, model, scheduler, karras, taesd, deepcache_interval, upscale, dtype, device):
         model_lower = model.lower()
 
         schedulers = {
@@ -131,13 +127,23 @@ class Loader:
         if scheduler in ["Euler a", "PNDM"]:
             del scheduler_kwargs["use_karras_sigmas"]
 
+        # no fp16 variant
+        if not ZERO_GPU and model_lower not in [
+            "sg161222/realistic_vision_v5.1_novae",
+            "prompthero/openjourney-v4",
+            "linaqruf/anything-v3-1",
+        ]:
+            variant = "fp16"
+        else:
+            variant = None
+
         pipe_kwargs = {
             "scheduler": schedulers[scheduler](**scheduler_kwargs),
             "pretrained_model_name_or_path": model_lower,
             "requires_safety_checker": False,
             "use_safetensors": True,
             "safety_checker": None,
-            "torch_dtype": dtype,
+            "variant": variant,
         }
 
         # already loaded
@@ -150,6 +156,10 @@ class Loader:
                 or self.pipe.scheduler.config.use_karras_sigmas == karras
             )
 
+            if upscale and not self.gan:
+                print("Loading fal/AuraSR-v2...")
+                self.gan = AuraSR.from_pretrained("fal/AuraSR-v2")
+
             if same_model:
                 if not same_scheduler:
                     print(f"Switching to {scheduler}...")
@@ -157,30 +167,23 @@ class Loader:
                     print(f"{'Enabling' if karras else 'Disabling'} Karras sigmas...")
                 if not same_scheduler or not same_karras:
                     self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
-
-                self._load_vae(model_lower, taesd, dtype)
+                self._load_vae(model_lower, taesd, variant)
                 self._load_deepcache(interval=deepcache_interval)
                 return self.pipe, self.gan
             else:
                 print(f"Unloading {model_name.lower()}...")
                 self.pipe = None
-                torch.cuda.empty_cache()
-
-        # no fp16 variant
-        if not ZERO_GPU and model_lower not in [
-            "sg161222/realistic_vision_v5.1_novae",
-            "prompthero/openjourney-v4",
-            "linaqruf/anything-v3-1",
-        ]:
-            pipe_kwargs["variant"] = "fp16"
 
         print(f"Loading {model_lower} with {'Tiny' if taesd else 'KL'} VAE...")
-        self.pipe = StableDiffusionPipeline.from_pretrained(**pipe_kwargs).to(self.gpu)
+        self.pipe = StableDiffusionPipeline.from_pretrained(**pipe_kwargs).to(
+            device=device,
+            dtype=dtype,
+        )
         self.pipe.load_textual_inversion(
             pretrained_model_name_or_path=list(EMBEDDINGS.keys()),
             tokens=list(EMBEDDINGS.values()),
         )
-        self._load_vae(model_lower, taesd, dtype)
+        self._load_vae(model_lower, taesd, variant)
         self._load_deepcache(interval=deepcache_interval)
 
         if upscale and self.gan is None:
@@ -190,8 +193,8 @@ class Loader:
         if not upscale and self.gan is not None:
             print("Unloading fal/AuraSR-v2...")
             self.gan = None
-            torch.cuda.empty_cache
 
+        torch.cuda.empty_cache()
         return self.pipe, self.gan
 
 
@@ -269,11 +272,11 @@ def generate(
     if seed is None or seed < 0:
         seed = int(datetime.now().timestamp() * 1_000_000) % (2**64)
 
-    GPU = torch.device("cuda")
+    DEVICE = torch.device("cuda")
 
-    TORCH_DTYPE = (
+    DTYPE = (
         torch.bfloat16
-        if torch.cuda.is_available() and torch.cuda.get_device_properties(GPU).major >= 8
+        if torch.cuda.is_available() and torch.cuda.get_device_properties(DEVICE).major >= 8
         else torch.float16
     )
 
@@ -293,18 +296,19 @@ def generate(
             taesd,
             deepcache_interval,
             upscale,
-            TORCH_DTYPE,
+            DTYPE,
+            DEVICE,
         )
 
         # prompt embeds
         compel = Compel(
             textual_inversion_manager=DiffusersTextualInversionManager(pipe),
-            dtype_for_device_getter=lambda _: TORCH_DTYPE,
+            dtype_for_device_getter=lambda _: DTYPE,
             returned_embeddings_type=EMBEDDINGS_TYPE,
             truncate_long_prompts=truncate_prompts,
             text_encoder=pipe.text_encoder,
             tokenizer=pipe.tokenizer,
-            device=GPU,
+            device=pipe.device,
         )
 
         images = []
@@ -318,7 +322,7 @@ def generate(
 
         for i in range(num_images):
             # seeded generator for each iteration
-            generator = torch.Generator(device=GPU).manual_seed(current_seed)
+            generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
 
             try:
                 all_positive_prompts = parse_prompt(positive_prompt)
@@ -333,22 +337,24 @@ def generate(
                 raise Error("ParsingException: Invalid prompt")
 
             with token_merging(pipe, tome_ratio=tome_ratio):
-                image = pipe(
-                    num_inference_steps=inference_steps,
-                    negative_prompt_embeds=neg_embeds,
-                    guidance_scale=guidance_scale,
-                    prompt_embeds=pos_embeds,
-                    generator=generator,
-                    height=height,
-                    width=width,
-                ).images[0]
-
-                if upscale:
-                    print("Upscaling image...")
-                    batch_size = 12 if ZERO_GPU else 4  # smaller batch to fit in 8GB
-                    image = gan.upscale_4x_overlapped(image, max_batch_size=batch_size)
-
-                images.append((image, str(current_seed)))
+                try:
+                    image = pipe(
+                        num_inference_steps=inference_steps,
+                        negative_prompt_embeds=neg_embeds,
+                        guidance_scale=guidance_scale,
+                        prompt_embeds=pos_embeds,
+                        generator=generator,
+                        height=height,
+                        width=width,
+                    ).images[0]
+                    if upscale:
+                        print("Upscaling image...")
+                        batch_size = 12 if ZERO_GPU else 4  # smaller batch to fit in 8GB
+                        image = gan.upscale_4x_overlapped(image, max_batch_size=batch_size)
+                    images.append((image, str(current_seed)))
+                finally:
+                    if not ZERO_GPU:
+                        torch.cuda.empty_cache()
 
             if increment_seed:
                 current_seed += 1
