@@ -3,7 +3,7 @@
 import argparse
 
 import config as cfg
-from generate import generate
+from lib import generate
 
 
 def save_images(images, filename="image.png"):

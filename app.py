@@ -4,7 +4,7 @@ import json
 import gradio as gr
 
 import config as cfg
-from generate import generate
+from lib import generate
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 random_seed_js = """
