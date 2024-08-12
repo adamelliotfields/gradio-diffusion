@@ -14,6 +14,7 @@ pinned: true
 header: mini
 license: apache-2.0
 models:
+- ai-forever/Real-ESRGAN
 - fluently/Fluently-v4
 - Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
@@ -21,6 +22,9 @@ models:
 - runwayml/stable-diffusion-v1-5
 - SG161222/Realistic_Vision_V5.1_noVAE
 preload_from_hub:
+- >-
+  ai-forever/Real-ESRGAN
+  RealESRGAN_x2.pth,RealESRGAN_x4.pth
 - >-
   fluently/Fluently-v4
   text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors

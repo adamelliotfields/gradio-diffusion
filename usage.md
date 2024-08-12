@@ -32,6 +32,10 @@ Arrays allow you to generate different images from a single prompt. For example,
 
 Styles are prompt templates from twri's [sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node. Start with a subject like "cat", pick a style, and iterate from there.
 
+### Scale
+
+Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN).
+
 ### Models
 
 Each model checkpoint has a different aesthetic:

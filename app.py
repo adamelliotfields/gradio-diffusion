@@ -135,11 +135,11 @@ with gr.Blocks(
                             label="Images",
                         )
                         scale = gr.Dropdown(
-                            choices=[("1x", 1), ("2x", 2), ("4x", 4)],
+                            choices=[(f"{s}x", s) for s in cfg.SCALES],
                             filterable=False,
+                            value=cfg.SCALE,
                             label="Scale",
                             min_width=200,
-                            value=1,
                         )
 
                     with gr.Row():
