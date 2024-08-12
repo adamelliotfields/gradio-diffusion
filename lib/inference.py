@@ -91,7 +91,8 @@ def generate(
     increment_seed=True,
     deepcache_interval=1,
     tome_ratio=0,
-    log: Callable[[str], None] = None,
+    scale=1,
+    Info: Callable[[str], None] = None,
     Error=Exception,
 ):
     if not torch.cuda.is_available():
@@ -118,12 +119,13 @@ def generate(
     with torch.inference_mode():
         start = time.perf_counter()
         loader = Loader()
-        pipe = loader.load(
+        pipe, upscaler = loader.load(
             model,
             scheduler,
             karras,
             taesd,
             deepcache_interval,
+            scale,
             DTYPE,
             DEVICE,
         )
@@ -167,6 +169,7 @@ def generate(
             with token_merging(pipe, tome_ratio=tome_ratio):
                 try:
                     image = pipe(
+                        output_type="np" if scale > 1 else "pil",
                         num_inference_steps=inference_steps,
                         negative_prompt_embeds=neg_embeds,
                         guidance_scale=guidance_scale,
@@ -175,6 +178,8 @@ def generate(
                         height=height,
                         width=width,
                     ).images[0]
+                    if scale > 1:
+                        image = upscaler.predict(image)
                     images.append((image, str(current_seed)))
                 finally:
                     if not ZERO_GPU:
@@ -188,6 +193,6 @@ def generate(
             loader.pipe = None
 
         diff = time.perf_counter() - start
-        if log:
-            log(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
+        if Info:
+            Info(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
         return images

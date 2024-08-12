@@ -15,6 +15,8 @@ from diffusers import (
 from diffusers.models import AutoencoderKL, AutoencoderTiny
 from torch._dynamo import OptimizedModule
 
+from .upscaler import RealESRGAN
+
 ZERO_GPU = (
     os.environ.get("SPACES_ZERO_GPU", "").lower() == "true"
     or os.environ.get("SPACES_ZERO_GPU", "") == "1"
@@ -38,7 +40,16 @@ class Loader:
         if cls._instance is None:
             cls._instance = super(Loader, cls).__new__(cls)
             cls._instance.pipe = None
+            cls._instance.upscaler = None
         return cls._instance
+
+    def _load_upscaler(self, device=None, scale=4):
+        same_scale = self.upscaler is not None and self.upscaler.scale == scale
+        if scale == 1:
+            self.upscaler = None
+        if scale > 1 and not same_scale:
+            self.upscaler = RealESRGAN(device=device, scale=scale)
+            self.upscaler.load_weights()
 
     def _load_deepcache(self, interval=1):
         has_deepcache = hasattr(self.pipe, "deepcache")
@@ -82,7 +93,7 @@ class Loader:
                 model=model,
             )
 
-    def load(self, model, scheduler, karras, taesd, deepcache_interval, dtype, device):
+    def load(self, model, scheduler, karras, taesd, deepcache_interval, scale, dtype, device):
         model_lower = model.lower()
 
         schedulers = {
@@ -145,7 +156,9 @@ class Loader:
                     self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
                 self._load_vae(model_lower, taesd, variant)
                 self._load_deepcache(interval=deepcache_interval)
-                return self.pipe
+                self._load_upscaler(device=device, scale=scale)
+                torch.cuda.empty_cache()
+                return self.pipe, self.upscaler
             else:
                 print(f"Unloading {model_name.lower()}...")
                 self.pipe = None
@@ -161,6 +174,6 @@ class Loader:
         )
         self._load_vae(model_lower, taesd, variant)
         self._load_deepcache(interval=deepcache_interval)
-
+        self._load_upscaler(device=device, scale=scale)
         torch.cuda.empty_cache()
-        return self.pipe
+        return self.pipe, self.upscaler

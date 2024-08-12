@@ -38,7 +38,7 @@ def handle_generate(*args):
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
     try:
-        images = generate(*args, log=gr.Info, Error=gr.Error)
+        images = generate(*args, Info=gr.Info, Error=gr.Error)
     except RuntimeError:
         raise gr.Error("RuntimeError: Please try again")
     return images
@@ -90,32 +90,63 @@ with gr.Blocks(
                     )
 
                     model = gr.Dropdown(
-                        value=cfg.MODEL,
-                        filterable=False,
-                        label="Model",
                         choices=cfg.MODELS,
+                        filterable=False,
+                        value=cfg.MODEL,
+                        label="Model",
                     )
 
                     with gr.Row():
                         style = gr.Dropdown(
                             value=cfg.STYLE,
                             label="Style",
+                            min_width=200,
                             choices=[("None", None)]
                             + [(style["name"], style["id"]) for style in styles],
                         )
                         scheduler = gr.Dropdown(
+                            choices=cfg.SCHEDULERS,
                             value=cfg.SCHEDULER,
                             elem_id="scheduler",
                             label="Scheduler",
                             filterable=False,
+                        )
+
+                    with gr.Row():
+                        width = gr.Slider(
+                            value=cfg.WIDTH,
+                            label="Width",
                             min_width=200,
-                            choices=cfg.SCHEDULERS,
+                            minimum=320,
+                            maximum=768,
+                            step=32,
+                        )
+                        height = gr.Slider(
+                            value=cfg.HEIGHT,
+                            label="Height",
+                            minimum=320,
+                            maximum=768,
+                            step=32,
+                        )
+                        num_images = gr.Dropdown(
+                            choices=list(range(1, 5)),
+                            value=cfg.NUM_IMAGES,
+                            filterable=False,
+                            label="Images",
+                        )
+                        scale = gr.Dropdown(
+                            choices=[("1x", 1), ("2x", 2), ("4x", 4)],
+                            filterable=False,
+                            label="Scale",
+                            min_width=200,
+                            value=1,
                         )
 
                     with gr.Row():
                         guidance_scale = gr.Slider(
                             value=cfg.GUIDANCE_SCALE,
                             label="Guidance Scale",
+                            min_width=200,
                             minimum=1.0,
                             maximum=15.0,
                             step=0.1,
@@ -135,39 +166,15 @@ with gr.Blocks(
                         )
 
                     with gr.Row():
-                        width = gr.Slider(
-                            value=cfg.WIDTH,
-                            label="Width",
-                            minimum=320,
-                            maximum=768,
-                            step=32,
-                        )
-                        height = gr.Slider(
-                            value=cfg.HEIGHT,
-                            label="Height",
-                            minimum=320,
-                            maximum=768,
-                            step=32,
-                        )
-                        num_images = gr.Dropdown(
-                            choices=list(range(1, 5)),
-                            value=cfg.NUM_IMAGES,
-                            filterable=False,
-                            label="Images",
-                        )
-
-                    with gr.Row():
                         use_karras = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Karras σ",
                             value=True,
-                            scale=1,
                         )
                         increment_seed = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Autoincrement",
                             value=True,
-                            scale=1,
                         )
 
             with gr.TabItem("🛠️ Advanced"):
@@ -226,7 +233,7 @@ with gr.Blocks(
             columns=2,
         )
         prompt = gr.Textbox(
-            placeholder="corgi, at the beach, cute, 8k",
+            placeholder="corgi, beach, 8k",
             show_label=False,
             label="Prompt",
             value=None,
@@ -294,6 +301,7 @@ with gr.Blocks(
             increment_seed,
             deepcache_interval,
             tome_ratio,
+            scale,
         ],
     )
 
