@@ -52,7 +52,9 @@ Gradio app for Stable Diffusion 1.5 including:
 * multiple samplers with Karras schedule
 * Compel prompting
 * 100+ styles from sdxl_prompt_styler
-* DeepCache and ToMe
+* FreeU and Clip Skip for quality
+* DeepCache and ToMe for speed
+* Real-ESRGAN upscaling
 * optional TAESD
 
 ## Usage

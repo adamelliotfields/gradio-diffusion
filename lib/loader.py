@@ -64,6 +64,17 @@ class Loader:
         self.pipe.deepcache.set_params(cache_interval=interval)
         self.pipe.deepcache.enable()
 
+    def _load_freeu(self, freeu=False):
+        # https://github.com/huggingface/diffusers/blob/v0.30.0/src/diffusers/models/unets/unet_2d_condition.py
+        block = self.pipe.unet.up_blocks[0]
+        attrs = ["b1", "b2", "s1", "s2"]
+        has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
+        if has_freeu and not freeu:
+            self.pipe.disable_freeu()
+        elif not has_freeu and freeu:
+            # https://github.com/ChenyangSi/FreeU
+            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
+
     def _load_vae(self, model_name=None, taesd=False, variant=None):
         vae_type = type(self.pipe.vae)
         is_kl = issubclass(vae_type, (AutoencoderKL, OptimizedModule))
@@ -93,7 +104,18 @@ class Loader:
                 model=model,
             )
 
-    def load(self, model, scheduler, karras, taesd, deepcache_interval, scale, dtype, device):
+    def load(
+        self,
+        model,
+        scheduler,
+        karras,
+        taesd,
+        freeu,
+        deepcache_interval,
+        scale,
+        dtype,
+        device,
+    ):
         model_lower = model.lower()
 
         schedulers = {
@@ -155,8 +177,9 @@ class Loader:
                 if not same_scheduler or not same_karras:
                     self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
                 self._load_vae(model_lower, taesd, variant)
-                self._load_deepcache(interval=deepcache_interval)
-                self._load_upscaler(device=device, scale=scale)
+                self._load_freeu(freeu)
+                self._load_deepcache(deepcache_interval)
+                self._load_upscaler(device, scale)
                 torch.cuda.empty_cache()
                 return self.pipe, self.upscaler
             else:
@@ -173,7 +196,8 @@ class Loader:
             tokens=list(EMBEDDINGS.values()),
         )
         self._load_vae(model_lower, taesd, variant)
-        self._load_deepcache(interval=deepcache_interval)
-        self._load_upscaler(device=device, scale=scale)
+        self._load_freeu(freeu)
+        self._load_deepcache(deepcache_interval)
+        self._load_upscaler(device, scale)
         torch.cuda.empty_cache()
         return self.pipe, self.upscaler

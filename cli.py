@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--clip-skip", action="store_true")
     parser.add_argument("--truncate", action="store_true")
     parser.add_argument("--karras", action="store_true")
+    parser.add_argument("--freeu", action="store_true")
     parser.add_argument("--no-increment", action="store_false")
     # fmt: on
 
@@ -52,6 +53,7 @@ def main():
         args.images,
         args.karras,
         args.taesd,
+        args.freeu,
         args.clip_skip,
         args.truncate,
         args.no_increment,

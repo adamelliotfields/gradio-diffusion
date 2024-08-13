@@ -171,9 +171,19 @@ with gr.Blocks(
                             label="Karras σ",
                             value=True,
                         )
+                        use_freeu = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="FreeU",
+                            value=False,
+                        )
+                        use_clip_skip = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="Clip skip",
+                            value=False,
+                        )
                         increment_seed = gr.Checkbox(
                             elem_classes=["checkbox"],
-                            label="Autoincrement",
+                            label="Autoincrement seed",
                             value=True,
                         )
 
@@ -205,11 +215,6 @@ with gr.Blocks(
                         use_taesd = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Tiny VAE",
-                            value=False,
-                        )
-                        use_clip_skip = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Clip skip",
                             value=False,
                         )
                         truncate_prompts = gr.Checkbox(
@@ -296,6 +301,7 @@ with gr.Blocks(
             num_images,
             use_karras,
             use_taesd,
+            use_freeu,
             use_clip_skip,
             truncate_prompts,
             increment_seed,

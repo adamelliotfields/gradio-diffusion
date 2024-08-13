@@ -32,6 +32,14 @@ Arrays allow you to generate different images from a single prompt. For example,
 
 Styles are prompt templates from twri's [sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node. Start with a subject like "cat", pick a style, and iterate from there.
 
+#### FreeU
+
+[FreeU](https://github.com/ChenyangSi/FreeU) (Si et al. 2023) re-weights the contributions sourced from the U-Net’s skip connections and backbone feature maps to potentially improve image quality.
+
+#### Clip Skip
+
+When enabled, the last CLIP layer is skipped. This _can_ improve image quality with anime models.
+
 ### Scale
 
 Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN).
@@ -63,7 +71,7 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 
 #### DeepCache
 
-[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower UNet layers and reuses them every `Interval` steps:
+[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower U-Net layers and reuses them every `Interval` steps:
 * `1`: no caching
 * `2`: more quality (default)
 * `3`: balanced
@@ -71,15 +79,11 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 
 #### ToMe
 
-[Token merging](https://arxiv.org/abs/2303.17604) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.
+[Token merging](https://github.com/dbolya/tomesd) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.
 
 #### Tiny VAE
 
 Enable [madebyollin/taesd](https://github.com/madebyollin/taesd) for almost instant latent decoding with a minor loss in detail. Useful for development.
-
-#### Clip Skip
-
-When enabled, the last CLIP layer is skipped. This _can_ improve image quality with anime models.
 
 #### Prompt Truncation
 
