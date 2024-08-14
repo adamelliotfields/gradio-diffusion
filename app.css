@@ -61,10 +61,13 @@
   font-weight: var(--section-header-text-weight);
   font-size: var(--section-header-text-size);
 }
+.popover#random:hover::after {
+  content: 'Random prompt';
+}
 .popover#clear:hover::after {
   content: 'Clear gallery';
 }
-.popover#random:hover::after {
+.popover#refresh:hover::after {
   /* see config.py for default seed */
   content: var(--seed, "-1");
 }

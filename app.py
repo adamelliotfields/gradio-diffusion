@@ -1,5 +1,6 @@
 import argparse
 import json
+import random
 
 import gradio as gr
 
@@ -7,10 +8,10 @@ import config as cfg
 from lib import generate
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
-random_seed_js = """
+refresh_seed_js = """
 () => {
     const n = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-    const button = document.getElementById("random");
+    const button = document.getElementById("refresh");
     button.style.setProperty("--seed", `"${n}"`);
     return n;
 }
@@ -18,7 +19,7 @@ random_seed_js = """
 
 seed_js = """
 (seed) => {
-    const button = document.getElementById("random");
+    const button = document.getElementById("refresh");
     button.style.setProperty("--seed", `"${seed}"`);
     return seed;
 }
@@ -30,7 +31,14 @@ def read_file(path: str) -> str:
         return file.read()
 
 
-def handle_generate(*args):
+def random_fn():
+    prompts = read_file("data/prompts.json")
+    prompts = json.loads(prompts)
+    index = random.randint(0, len(prompts) - 1)
+    return gr.Textbox(value=prompts[index])
+
+
+def generate_fn(*args):
     if len(args) > 0:
         prompt = args[0]
     else:
@@ -43,9 +51,6 @@ def handle_generate(*args):
         raise gr.Error("RuntimeError: Please try again")
     return images
 
-
-with open("./data/styles.json", "r") as f:
-    styles = json.load(f)
 
 with gr.Blocks(
     head=read_file("./partials/head.html"),
@@ -88,7 +93,6 @@ with gr.Blocks(
                         placeholder="ugly, bad",
                         lines=2,
                     )
-
                     model = gr.Dropdown(
                         choices=cfg.MODELS,
                         filterable=False,
@@ -97,12 +101,12 @@ with gr.Blocks(
                     )
 
                     with gr.Row():
+                        styles = json.loads(read_file("data/styles.json"))
                         style = gr.Dropdown(
                             value=cfg.STYLE,
                             label="Style",
                             min_width=200,
-                            choices=[("None", None)]
-                            + [(style["name"], style["id"]) for style in styles],
+                            choices=[("None", None)] + [(s["name"], s["id"]) for s in styles],
                         )
                         scheduler = gr.Dropdown(
                             choices=cfg.SCHEDULERS,
@@ -113,40 +117,9 @@ with gr.Blocks(
                         )
 
                     with gr.Row():
-                        width = gr.Slider(
-                            value=cfg.WIDTH,
-                            label="Width",
-                            min_width=200,
-                            minimum=320,
-                            maximum=768,
-                            step=32,
-                        )
-                        height = gr.Slider(
-                            value=cfg.HEIGHT,
-                            label="Height",
-                            minimum=320,
-                            maximum=768,
-                            step=32,
-                        )
-                        num_images = gr.Dropdown(
-                            choices=list(range(1, 5)),
-                            value=cfg.NUM_IMAGES,
-                            filterable=False,
-                            label="Images",
-                        )
-                        scale = gr.Dropdown(
-                            choices=[(f"{s}x", s) for s in cfg.SCALES],
-                            filterable=False,
-                            value=cfg.SCALE,
-                            label="Scale",
-                            min_width=200,
-                        )
-
-                    with gr.Row():
                         guidance_scale = gr.Slider(
                             value=cfg.GUIDANCE_SCALE,
                             label="Guidance Scale",
-                            min_width=200,
                             minimum=1.0,
                             maximum=15.0,
                             step=0.1,
@@ -163,6 +136,36 @@ with gr.Blocks(
                             label="Seed",
                             minimum=-1,
                             maximum=(2**64) - 1,
+                        )
+
+                    with gr.Row():
+                        width = gr.Slider(
+                            value=cfg.WIDTH,
+                            label="Width",
+                            minimum=320,
+                            maximum=768,
+                            step=16,
+                        )
+                        height = gr.Slider(
+                            value=cfg.HEIGHT,
+                            label="Height",
+                            minimum=320,
+                            maximum=768,
+                            step=16,
+                        )
+                        scale = gr.Dropdown(
+                            choices=[(f"{s}x", s) for s in cfg.SCALES],
+                            filterable=False,
+                            value=cfg.SCALE,
+                            label="Scale",
+                            min_width=100,
+                        )
+                        num_images = gr.Dropdown(
+                            choices=list(range(1, 5)),
+                            value=cfg.NUM_IMAGES,
+                            filterable=False,
+                            label="Images",
+                            min_width=60,
                         )
 
                     with gr.Row():
@@ -183,7 +186,7 @@ with gr.Blocks(
                         )
                         increment_seed = gr.Checkbox(
                             elem_classes=["checkbox"],
-                            label="Autoincrement seed",
+                            label="Autoincrement",
                             value=True,
                         )
 
@@ -246,14 +249,20 @@ with gr.Blocks(
         )
 
     with gr.Row():
-        generate_btn = gr.Button("Generate", variant="primary", scale=6, elem_classes=[])
+        generate_btn = gr.Button("Generate", variant="primary")
         random_btn = gr.Button(
             elem_classes=["icon-button", "popover"],
             variant="secondary",
             elem_id="random",
             min_width=0,
             value="🎲",
-            scale=1,
+        )
+        refresh_btn = gr.Button(
+            elem_classes=["icon-button", "popover"],
+            variant="secondary",
+            elem_id="refresh",
+            min_width=0,
+            value="🔄",
         )
         clear_btn = gr.ClearButton(
             elem_classes=["icon-button", "popover"],
@@ -262,11 +271,16 @@ with gr.Blocks(
             elem_id="clear",
             min_width=0,
             value="🗑️",
-            scale=1,
         )
 
+    random_btn.click(
+        fn=random_fn,
+        inputs=[],
+        outputs=[prompt],
+    )
+
     # update the seed using JavaScript
-    random_btn.click(None, outputs=[seed], js=random_seed_js)
+    refresh_btn.click(None, outputs=[seed], js=refresh_seed_js)
 
     seed.change(
         None,
@@ -283,7 +297,7 @@ with gr.Blocks(
 
     gr.on(
         triggers=[generate_btn.click, prompt.submit],
-        fn=handle_generate,
+        fn=generate_fn,
         api_name="api",
         concurrency_limit=5,
         outputs=[output_images],
