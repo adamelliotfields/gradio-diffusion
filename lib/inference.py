@@ -24,7 +24,7 @@ ZERO_GPU = (
     or os.environ.get("SPACES_ZERO_GPU", "") == "1"
 )
 
-with open("./styles/twri.json") as f:
+with open("./data/styles.json") as f:
     styles = json.load(f)
 
 

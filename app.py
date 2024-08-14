@@ -44,7 +44,7 @@ def handle_generate(*args):
     return images
 
 
-with open("./styles/twri.json", "r") as f:
+with open("./data/styles.json", "r") as f:
     styles = json.load(f)
 
 with gr.Blocks(
