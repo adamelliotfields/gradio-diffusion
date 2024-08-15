@@ -25,6 +25,14 @@ seed_js = """
 }
 """
 
+aspect_ratio_js = """
+(ar, w, h) => {
+    if (!ar) return [w, h];
+    const [width, height] = ar.split(",");
+    return [parseInt(width), parseInt(height)];
+}
+"""
+
 
 def read_file(path: str) -> str:
     with open(path, "r", encoding="utf-8") as file:
@@ -34,8 +42,7 @@ def read_file(path: str) -> str:
 def random_fn():
     prompts = read_file("data/prompts.json")
     prompts = json.loads(prompts)
-    index = random.randint(0, len(prompts) - 1)
-    return gr.Textbox(value=prompts[index])
+    return gr.Textbox(value=random.choice(prompts))
 
 
 def generate_fn(*args):
@@ -152,6 +159,20 @@ with gr.Blocks(
                             minimum=320,
                             maximum=768,
                             step=16,
+                        )
+                        aspect_ratio = gr.Dropdown(
+                            choices=[
+                                ("Custom", None),
+                                ("7:9 (448x576)", "448,576"),
+                                ("3:4 (432x576)", "432,576"),
+                                ("1:1 (512x512)", "512,512"),
+                                ("4:3 (576x432)", "576,432"),
+                                ("9:7 (576x448)", "576,448"),
+                            ],
+                            value="448,576",
+                            filterable=False,
+                            label="Aspect Ratio",
+                            min_width=180,
                         )
                         scale = gr.Dropdown(
                             choices=[(f"{s}x", s) for s in cfg.SCALES],
@@ -273,32 +294,40 @@ with gr.Blocks(
             value="🗑️",
         )
 
-    random_btn.click(
-        fn=random_fn,
-        inputs=[],
-        outputs=[prompt],
-    )
+    random_btn.click(random_fn, inputs=[], outputs=[prompt], show_api=False)
 
-    # update the seed using JavaScript
-    refresh_btn.click(None, outputs=[seed], js=refresh_seed_js)
+    refresh_btn.click(None, inputs=[], outputs=[seed], js=refresh_seed_js)
 
-    seed.change(
-        None,
-        inputs=[seed],
-        outputs=[],
-        js=seed_js,
-    )
+    seed.change(None, inputs=[seed], outputs=[], js=seed_js)
 
     file_format.change(
         lambda f: gr.Gallery(format=f),
         inputs=[file_format],
         outputs=[output_images],
+        show_api=False,
+    )
+
+    # input events are only user input; change events are both user and programmatic
+    aspect_ratio.input(
+        None,
+        inputs=[aspect_ratio, width, height],
+        outputs=[width, height],
+        js=aspect_ratio_js,
+    )
+
+    # show "Custom" aspect ratio when manually changing width or height
+    gr.on(
+        triggers=[width.input, height.input],
+        fn=None,
+        inputs=[],
+        outputs=[aspect_ratio],
+        js="() => { return null; }",
     )
 
     gr.on(
         triggers=[generate_btn.click, prompt.submit],
         fn=generate_fn,
-        api_name="api",
+        api_name="generate",
         concurrency_limit=5,
         outputs=[output_images],
         inputs=[
