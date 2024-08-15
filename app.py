@@ -87,7 +87,7 @@ with gr.Blocks(
     with gr.Accordion(
         elem_classes=["accordion"],
         elem_id="menu",
-        label="Open menu",
+        label="Show menu",
         open=False,
     ):
         with gr.Tabs():
@@ -106,6 +106,7 @@ with gr.Blocks(
                             filterable=False,
                             value=Config.MODEL,
                             label="Model",
+                            min_width=240,
                         )
                         scheduler = gr.Dropdown(
                             choices=Config.SCHEDULERS,
@@ -120,14 +121,15 @@ with gr.Blocks(
                         style = gr.Dropdown(
                             value=Config.STYLE,
                             label="Style",
-                            min_width=200,
                             choices=[("None", None)] + [(s["name"], s["id"]) for s in styles],
                         )
                         embeddings = gr.Dropdown(
+                            elem_id="embeddings",
                             label="Embeddings",
                             choices=[(f"<{e}>", e) for e in Config.EMBEDDINGS],
                             multiselect=True,
                             value=[Config.EMBEDDING],
+                            min_width=240,
                         )
 
                     with gr.Row():
@@ -179,7 +181,6 @@ with gr.Blocks(
                             value="448,576",
                             filterable=False,
                             label="Aspect Ratio",
-                            min_width=180,
                         )
                         scale = gr.Dropdown(
                             choices=[(f"{s}x", s) for s in Config.SCALES],
@@ -253,49 +254,52 @@ with gr.Blocks(
             with gr.TabItem("ℹ️ Usage"):
                 gr.Markdown(read_file("usage.md"), elem_classes=["markdown"])
 
-    with gr.Group():
-        output_images = gr.Gallery(
-            elem_classes=["gallery"],
-            show_share_button=False,
-            interactive=False,
-            show_label=False,
-            object_fit="cover",
-            label="Output",
-            format="png",
-            columns=2,
-        )
-        prompt = gr.Textbox(
-            placeholder="corgi, beach, 8k",
-            show_label=False,
-            label="Prompt",
-            value=None,
-            lines=2,
-        )
+    # Main content
+    with gr.Column(elem_id="content"):
+        with gr.Group():
+            output_images = gr.Gallery(
+                elem_classes=["gallery"],
+                show_share_button=False,
+                interactive=False,
+                show_label=False,
+                object_fit="cover",
+                label="Output",
+                format="png",
+                columns=2,
+            )
+            prompt = gr.Textbox(
+                placeholder="corgi, beach, 8k",
+                show_label=False,
+                label="Prompt",
+                value=None,
+                lines=2,
+            )
 
-    with gr.Row():
-        generate_btn = gr.Button("Generate", variant="primary")
-        random_btn = gr.Button(
-            elem_classes=["icon-button", "popover"],
-            variant="secondary",
-            elem_id="random",
-            min_width=0,
-            value="🎲",
-        )
-        refresh_btn = gr.Button(
-            elem_classes=["icon-button", "popover"],
-            variant="secondary",
-            elem_id="refresh",
-            min_width=0,
-            value="🔄",
-        )
-        clear_btn = gr.ClearButton(
-            elem_classes=["icon-button", "popover"],
-            components=[output_images],
-            variant="secondary",
-            elem_id="clear",
-            min_width=0,
-            value="🗑️",
-        )
+        # Buttons
+        with gr.Row():
+            generate_btn = gr.Button("Generate", variant="primary")
+            random_btn = gr.Button(
+                elem_classes=["icon-button", "popover"],
+                variant="secondary",
+                elem_id="random",
+                min_width=0,
+                value="🎲",
+            )
+            refresh_btn = gr.Button(
+                elem_classes=["icon-button", "popover"],
+                variant="secondary",
+                elem_id="refresh",
+                min_width=0,
+                value="🔄",
+            )
+            clear_btn = gr.ClearButton(
+                elem_classes=["icon-button", "popover"],
+                components=[output_images],
+                variant="secondary",
+                elem_id="clear",
+                min_width=0,
+                value="🗑️",
+            )
 
     random_btn.click(random_fn, inputs=[], outputs=[prompt], show_api=False)
 
