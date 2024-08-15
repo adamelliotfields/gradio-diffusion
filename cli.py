@@ -2,8 +2,7 @@
 # usage: python cli.py 'colorful calico cat artstation'
 import argparse
 
-import config as cfg
-from lib import generate
+from lib import Config, generate
 
 
 def save_images(images, filename="image.png"):
@@ -16,20 +15,21 @@ def main():
     # fmt: off
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("prompt", type=str, metavar="PROMPT")
-    parser.add_argument("-n", "--negative", type=str, metavar="STR", default=cfg.NEGATIVE_PROMPT)
-    parser.add_argument("-s", "--seed", type=int, metavar="INT", default=cfg.SEED)
+    parser.add_argument("-n", "--negative", type=str, metavar="STR", default="")
+    parser.add_argument("-e", "--embedding", type=str, metavar="STR", default=[], action="append")
+    parser.add_argument("-s", "--seed", type=int, metavar="INT", default=Config.SEED)
     parser.add_argument("-i", "--images", type=int, metavar="INT", default=1)
     parser.add_argument("-f", "--filename", type=str, metavar="STR", default="image.png")
-    parser.add_argument("-w", "--width", type=int, metavar="INT", default=cfg.WIDTH)
-    parser.add_argument("-h", "--height", type=int, metavar="INT", default=cfg.HEIGHT)
-    parser.add_argument("-m", "--model", type=str, metavar="STR", default=cfg.MODEL)
-    parser.add_argument("-d", "--deepcache", type=int, metavar="INT", default=cfg.DEEPCACHE_INTERVAL)
-    parser.add_argument("--scale", type=int, metavar="INT", choices=cfg.SCALES, default=cfg.SCALE)
-    parser.add_argument("--style", type=str, metavar="STR", default=cfg.STYLE)
-    parser.add_argument("--scheduler", type=str, metavar="STR", default=cfg.SCHEDULER)
-    parser.add_argument("--guidance", type=float, metavar="FLOAT", default=cfg.GUIDANCE_SCALE)
-    parser.add_argument("--steps", type=int, metavar="INT", default=cfg.INFERENCE_STEPS)
-    parser.add_argument("--tome", type=float, metavar="FLOAT", default=cfg.TOME_RATIO)
+    parser.add_argument("-w", "--width", type=int, metavar="INT", default=Config.WIDTH)
+    parser.add_argument("-h", "--height", type=int, metavar="INT", default=Config.HEIGHT)
+    parser.add_argument("-m", "--model", type=str, metavar="STR", default=Config.MODEL)
+    parser.add_argument("-d", "--deepcache", type=int, metavar="INT", default=Config.DEEPCACHE_INTERVAL)
+    parser.add_argument("--scale", type=int, metavar="INT", choices=Config.SCALES, default=Config.SCALE)
+    parser.add_argument("--style", type=str, metavar="STR", default=Config.STYLE)
+    parser.add_argument("--scheduler", type=str, metavar="STR", default=Config.SCHEDULER)
+    parser.add_argument("--guidance", type=float, metavar="FLOAT", default=Config.GUIDANCE_SCALE)
+    parser.add_argument("--steps", type=int, metavar="INT", default=Config.INFERENCE_STEPS)
+    parser.add_argument("--tome", type=float, metavar="FLOAT", default=Config.TOME_RATIO)
     parser.add_argument("--taesd", action="store_true")
     parser.add_argument("--clip-skip", action="store_true")
     parser.add_argument("--truncate", action="store_true")
@@ -42,6 +42,7 @@ def main():
     images = generate(
         args.prompt,
         args.negative,
+        args.embedding,
         args.style,
         args.seed,
         args.model,

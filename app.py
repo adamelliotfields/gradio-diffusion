@@ -4,8 +4,7 @@ import random
 
 import gradio as gr
 
-import config as cfg
-from lib import generate
+from lib import Config, generate
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """
@@ -73,8 +72,8 @@ with gr.Blocks(
         radius_size=gr.themes.sizes.radius_sm,
         spacing_size=gr.themes.sizes.spacing_md,
         # fonts
-        font=[gr.themes.GoogleFont("Inter"), *cfg.SANS_FONTS],
-        font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), *cfg.MONO_FONTS],
+        font=[gr.themes.GoogleFont("Inter"), *Config.SANS_FONTS],
+        font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), *Config.MONO_FONTS],
     ).set(
         layout_gap="8px",
         block_shadow="0 0 #0000",
@@ -95,51 +94,59 @@ with gr.Blocks(
             with gr.TabItem("⚙️ Settings"):
                 with gr.Group():
                     negative_prompt = gr.Textbox(
-                        value=cfg.NEGATIVE_PROMPT,
+                        value=None,
                         label="Negative Prompt",
                         placeholder="ugly, bad",
                         lines=2,
                     )
-                    model = gr.Dropdown(
-                        choices=cfg.MODELS,
-                        filterable=False,
-                        value=cfg.MODEL,
-                        label="Model",
-                    )
 
                     with gr.Row():
-                        styles = json.loads(read_file("data/styles.json"))
-                        style = gr.Dropdown(
-                            value=cfg.STYLE,
-                            label="Style",
-                            min_width=200,
-                            choices=[("None", None)] + [(s["name"], s["id"]) for s in styles],
+                        model = gr.Dropdown(
+                            choices=Config.MODELS,
+                            filterable=False,
+                            value=Config.MODEL,
+                            label="Model",
                         )
                         scheduler = gr.Dropdown(
-                            choices=cfg.SCHEDULERS,
-                            value=cfg.SCHEDULER,
+                            choices=Config.SCHEDULERS,
+                            value=Config.SCHEDULER,
                             elem_id="scheduler",
                             label="Scheduler",
                             filterable=False,
                         )
 
                     with gr.Row():
+                        styles = json.loads(read_file("data/styles.json"))
+                        style = gr.Dropdown(
+                            value=Config.STYLE,
+                            label="Style",
+                            min_width=200,
+                            choices=[("None", None)] + [(s["name"], s["id"]) for s in styles],
+                        )
+                        embeddings = gr.Dropdown(
+                            label="Embeddings",
+                            choices=[(f"<{e}>", e) for e in Config.EMBEDDINGS],
+                            multiselect=True,
+                            value=[Config.EMBEDDING],
+                        )
+
+                    with gr.Row():
                         guidance_scale = gr.Slider(
-                            value=cfg.GUIDANCE_SCALE,
+                            value=Config.GUIDANCE_SCALE,
                             label="Guidance Scale",
                             minimum=1.0,
                             maximum=15.0,
                             step=0.1,
                         )
                         inference_steps = gr.Slider(
-                            value=cfg.INFERENCE_STEPS,
+                            value=Config.INFERENCE_STEPS,
                             label="Inference Steps",
                             minimum=1,
                             maximum=50,
                             step=1,
                         )
                         seed = gr.Number(
-                            value=cfg.SEED,
+                            value=Config.SEED,
                             label="Seed",
                             minimum=-1,
                             maximum=(2**64) - 1,
@@ -147,14 +154,14 @@ with gr.Blocks(
 
                     with gr.Row():
                         width = gr.Slider(
-                            value=cfg.WIDTH,
+                            value=Config.WIDTH,
                             label="Width",
                             minimum=320,
                             maximum=768,
                             step=16,
                         )
                         height = gr.Slider(
-                            value=cfg.HEIGHT,
+                            value=Config.HEIGHT,
                             label="Height",
                             minimum=320,
                             maximum=768,
@@ -175,24 +182,44 @@ with gr.Blocks(
                             min_width=180,
                         )
                         scale = gr.Dropdown(
-                            choices=[(f"{s}x", s) for s in cfg.SCALES],
+                            choices=[(f"{s}x", s) for s in Config.SCALES],
                             filterable=False,
-                            value=cfg.SCALE,
+                            value=Config.SCALE,
                             label="Scale",
-                            min_width=100,
-                        )
-                        num_images = gr.Dropdown(
-                            choices=list(range(1, 5)),
-                            value=cfg.NUM_IMAGES,
-                            filterable=False,
-                            label="Images",
-                            min_width=60,
                         )
 
                     with gr.Row():
-                        use_karras = gr.Checkbox(
+                        num_images = gr.Dropdown(
+                            choices=list(range(1, 5)),
+                            value=Config.NUM_IMAGES,
+                            filterable=False,
+                            label="Images",
+                        )
+                        file_format = gr.Dropdown(
+                            choices=["png", "jpeg", "webp"],
+                            label="File Format",
+                            filterable=False,
+                            value="png",
+                        )
+                        deepcache_interval = gr.Slider(
+                            value=Config.DEEPCACHE_INTERVAL,
+                            label="DeepCache",
+                            minimum=1,
+                            maximum=4,
+                            step=1,
+                        )
+                        tome_ratio = gr.Slider(
+                            value=Config.TOME_RATIO,
+                            label="ToMe Ratio",
+                            minimum=0.0,
+                            maximum=0.5,
+                            step=0.01,
+                        )
+
+                    with gr.Row():
+                        increment_seed = gr.Checkbox(
                             elem_classes=["checkbox"],
-                            label="Karras σ",
+                            label="Autoincrement",
                             value=True,
                         )
                         use_freeu = gr.Checkbox(
@@ -205,37 +232,13 @@ with gr.Blocks(
                             label="Clip skip",
                             value=False,
                         )
-                        increment_seed = gr.Checkbox(
+
+                    with gr.Row():
+                        use_karras = gr.Checkbox(
                             elem_classes=["checkbox"],
-                            label="Autoincrement",
+                            label="Karras σ",
                             value=True,
                         )
-
-            with gr.TabItem("🛠️ Advanced"):
-                with gr.Group():
-                    with gr.Row():
-                        file_format = gr.Dropdown(
-                            choices=["png", "jpeg", "webp"],
-                            label="File Format",
-                            filterable=False,
-                            value="png",
-                        )
-                        deepcache_interval = gr.Slider(
-                            value=cfg.DEEPCACHE_INTERVAL,
-                            label="DeepCache Interval",
-                            minimum=1,
-                            maximum=4,
-                            step=1,
-                        )
-                        tome_ratio = gr.Slider(
-                            value=cfg.TOME_RATIO,
-                            label="ToMe Ratio",
-                            minimum=0.0,
-                            maximum=0.5,
-                            step=0.01,
-                        )
-
-                    with gr.Row():
                         use_taesd = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Tiny VAE",
@@ -333,6 +336,7 @@ with gr.Blocks(
         inputs=[
             prompt,
             negative_prompt,
+            embeddings,
             style,
             seed,
             model,

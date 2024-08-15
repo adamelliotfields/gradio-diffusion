@@ -22,14 +22,6 @@ ZERO_GPU = (
     or os.environ.get("SPACES_ZERO_GPU", "") == "1"
 )
 
-EMBEDDINGS = {
-    "./embeddings/bad_prompt_version2.pt": "<bad_prompt>",
-    "./embeddings/BadDream.pt": "<bad_dream>",
-    "./embeddings/FastNegativeV2.pt": "<fast_negative>",
-    "./embeddings/negative_hand.pt": "<negative_hand>",
-    "./embeddings/UnrealisticDream.pt": "<unrealistic_dream>",
-}
-
 
 # inspired by ComfyUI
 # https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/model_management.py
@@ -190,10 +182,6 @@ class Loader:
         self.pipe = StableDiffusionPipeline.from_pretrained(**pipe_kwargs).to(
             device=device,
             dtype=dtype,
-        )
-        self.pipe.load_textual_inversion(
-            pretrained_model_name_or_path=list(EMBEDDINGS.keys()),
-            tokens=list(EMBEDDINGS.values()),
         )
         self._load_vae(model_lower, taesd, variant)
         self._load_freeu(freeu)

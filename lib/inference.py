@@ -12,6 +12,7 @@ import tomesd
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
+from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
 
 from .loader import Loader
 
@@ -75,6 +76,7 @@ def apply_style(prompt, style_id, negative=False):
 def generate(
     positive_prompt,
     negative_prompt="",
+    embeddings=[],
     style=None,
     seed=None,
     model="runwayml/stable-diffusion-v1-5",
@@ -132,6 +134,21 @@ def generate(
             DEVICE,
         )
 
+        # load embeddings and append to negative prompt
+        embeddings_dir = os.path.join(os.path.dirname(__file__), "..", "embeddings")
+        embeddings_dir = os.path.abspath(embeddings_dir)
+        for embedding in embeddings:
+            try:
+                pipe.load_textual_inversion(
+                    pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
+                    token=f"<{embedding}>",
+                )
+                negative_prompt = (
+                    f"{negative_prompt}, {embedding}" if negative_prompt else embedding
+                )
+            except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
+                raise Error(f"Invalid embedding: {embedding}")
+
         # prompt embeds
         compel = Compel(
             textual_inversion_manager=DiffusersTextualInversionManager(pipe),
@@ -185,6 +202,7 @@ def generate(
                     images.append((image, str(current_seed)))
                 finally:
                     if not ZERO_GPU:
+                        pipe.unload_textual_inversion()
                         torch.cuda.empty_cache()
 
             if increment_seed:
@@ -193,6 +211,7 @@ def generate(
         if ZERO_GPU:
             # spaces always start fresh
             loader.pipe = None
+            loader.upscaler = None
 
         diff = time.perf_counter() - start
         if Info:
