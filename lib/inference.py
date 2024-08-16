@@ -16,14 +16,8 @@ from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
 
 from .loader import Loader
 
-__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="diffusers")
 __import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
 __import__("transformers").logging.set_verbosity_error()
-
-ZERO_GPU = (
-    os.environ.get("SPACES_ZERO_GPU", "").lower() == "true"
-    or os.environ.get("SPACES_ZERO_GPU", "") == "1"
-)
 
 with open("./data/styles.json") as f:
     styles = json.load(f)
@@ -76,6 +70,7 @@ def apply_style(prompt, style_id, negative=False):
 def generate(
     positive_prompt,
     negative_prompt="",
+    image_prompt=None,
     embeddings=[],
     style=None,
     seed=None,
@@ -85,6 +80,7 @@ def generate(
     height=512,
     guidance_scale=7.5,
     inference_steps=50,
+    denoising_strength=0.8,
     num_images=1,
     karras=False,
     taesd=False,
@@ -92,7 +88,7 @@ def generate(
     clip_skip=False,
     truncate_prompts=False,
     increment_seed=True,
-    deepcache_interval=1,
+    deepcache=1,
     tome_ratio=0,
     scale=1,
     Info: Callable[[str], None] = None,
@@ -119,19 +115,22 @@ def generate(
         else ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
     )
 
+    KIND = "img2img" if image_prompt is not None else "txt2img"
+
     with torch.inference_mode():
         start = time.perf_counter()
         loader = Loader()
         pipe, upscaler = loader.load(
+            KIND,
             model,
             scheduler,
             karras,
             taesd,
             freeu,
-            deepcache_interval,
+            deepcache,
             scale,
-            DTYPE,
             DEVICE,
+            DTYPE,
         )
 
         # load embeddings and append to negative prompt
@@ -151,13 +150,13 @@ def generate(
 
         # prompt embeds
         compel = Compel(
-            textual_inversion_manager=DiffusersTextualInversionManager(pipe),
+            device=pipe.device,
+            tokenizer=pipe.tokenizer,
+            text_encoder=pipe.text_encoder,
+            truncate_long_prompts=truncate_prompts,
             dtype_for_device_getter=lambda _: DTYPE,
             returned_embeddings_type=EMBEDDINGS_TYPE,
-            truncate_long_prompts=truncate_prompts,
-            text_encoder=pipe.text_encoder,
-            tokenizer=pipe.tokenizer,
-            device=pipe.device,
+            textual_inversion_manager=DiffusersTextualInversionManager(pipe),
         )
 
         images = []
@@ -185,33 +184,33 @@ def generate(
             except PromptParser.ParsingException:
                 raise Error("ParsingException: Invalid prompt")
 
+            kwargs = {
+                "width": width,
+                "height": height,
+                "generator": generator,
+                "prompt_embeds": pos_embeds,
+                "guidance_scale": guidance_scale,
+                "negative_prompt_embeds": neg_embeds,
+                "num_inference_steps": inference_steps,
+                "output_type": "np" if scale > 1 else "pil",
+            }
+
+            if KIND == "img2img":
+                kwargs["image"] = image_prompt
+                kwargs["strength"] = denoising_strength
+
             with token_merging(pipe, tome_ratio=tome_ratio):
                 try:
-                    image = pipe(
-                        output_type="np" if scale > 1 else "pil",
-                        num_inference_steps=inference_steps,
-                        negative_prompt_embeds=neg_embeds,
-                        guidance_scale=guidance_scale,
-                        prompt_embeds=pos_embeds,
-                        generator=generator,
-                        height=height,
-                        width=width,
-                    ).images[0]
+                    image = pipe(**kwargs).images[0]
                     if scale > 1:
                         image = upscaler.predict(image)
                     images.append((image, str(current_seed)))
                 finally:
-                    if not ZERO_GPU:
-                        pipe.unload_textual_inversion()
-                        torch.cuda.empty_cache()
+                    pipe.unload_textual_inversion()
+                    torch.cuda.empty_cache()
 
             if increment_seed:
                 current_seed += 1
-
-        if ZERO_GPU:
-            # spaces always start fresh
-            loader.pipe = None
-            loader.upscaler = None
 
         diff = time.perf_counter() - start
         if Info:

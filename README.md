@@ -48,6 +48,7 @@ preload_from_hub:
 # diffusion
 
 Gradio app for Stable Diffusion 1.5 including:
+* txt2img and img2img pipelines
 * curated models and TI embeddings
 * multiple samplers with Karras schedule
 * Compel prompting
@@ -84,4 +85,4 @@ python cli.py 'an astronaut riding a horse on mars'
 ## TODO
 
 - [ ] Metadata embed and display
-- [ ] Image-to-image
+- [ ] IP-Adapter and T2I-Adapter

@@ -55,6 +55,12 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 * [LMS](https://huggingface.co/docs/diffusers/api/schedulers/lms_discrete)
 * [PNDM](https://huggingface.co/docs/diffusers/api/schedulers/pndm)
 
+### Image-to-Image
+
+The `🖼️ Image` tab enables the image-to-image pipeline. Either use the image input or select a generation from the gallery and then adjust the denoising strength. To disable, simply clear the image input (the `x` overlay button).
+
+Denoising strength is essentially how much the generation will differ from the input image. A value of `0` will be identical to the original, while `1` will be a completely new image. You may want to also increase the number of inference steps.
+
 ### Advanced
 
 #### DeepCache
@@ -67,7 +73,7 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 
 #### ToMe
 
-[Token merging](https://github.com/dbolya/tomesd) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. ToMe's impact is more noticeable on larger images.
+[Token merging](https://github.com/dbolya/tomesd) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. Only necessary to speed up generation on older GPUs.
 
 #### FreeU
 
@@ -75,7 +81,7 @@ Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be
 
 #### Clip Skip
 
-When enabled, the last CLIP layer is skipped. This _can_ improve image quality with anime models.
+When enabled, the last CLIP layer is skipped. This can sometimes improve image quality with anime models.
 
 #### Tiny VAE
 

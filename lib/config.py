@@ -41,6 +41,7 @@ Config = SimpleNamespace(
     SEED=-1,
     GUIDANCE_SCALE=7,
     INFERENCE_STEPS=30,
+    DENOISING_STRENGTH=0.6,
     DEEPCACHE_INTERVAL=2,
     TOME_RATIO=0.0,
     SCALE=1,

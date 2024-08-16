@@ -30,6 +30,8 @@ def main():
     parser.add_argument("--guidance", type=float, metavar="FLOAT", default=Config.GUIDANCE_SCALE)
     parser.add_argument("--steps", type=int, metavar="INT", default=Config.INFERENCE_STEPS)
     parser.add_argument("--tome", type=float, metavar="FLOAT", default=Config.TOME_RATIO)
+    parser.add_argument("--strength", type=float, metavar="FLOAT", default=Config.DENOISING_STRENGTH)
+    parser.add_argument("--image", type=str, metavar="STR")
     parser.add_argument("--taesd", action="store_true")
     parser.add_argument("--clip-skip", action="store_true")
     parser.add_argument("--truncate", action="store_true")
@@ -42,6 +44,7 @@ def main():
     images = generate(
         args.prompt,
         args.negative,
+        args.image,
         args.embedding,
         args.style,
         args.seed,
@@ -51,6 +54,7 @@ def main():
         args.height,
         args.guidance,
         args.steps,
+        args.strength,
         args.images,
         args.karras,
         args.taesd,

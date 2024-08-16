@@ -44,6 +44,34 @@ def random_fn():
     return gr.Textbox(value=random.choice(prompts))
 
 
+# can't toggle interactive in JS
+def gallery_fn(images, image):
+    if image is not None:
+        return gr.Dropdown(
+            choices=[("🔒", -1)],
+            interactive=False,
+            value=-1,
+        )
+
+    return gr.Dropdown(
+        choices=[("None", -1)]
+        + [(str(i + 1), i) for i, _ in enumerate(images if images is not None else [])],
+        interactive=True,
+        value=-1,
+    )
+
+
+def image_prompt_fn(images):
+    return gallery_fn(images, None)
+
+
+# can't use image input in JS
+def image_select_fn(images, image, i):
+    if image is not None and i == -1:
+        return gr.Image(value=image)
+    return gr.Image(value=images[i][0]) if i > -1 else None
+
+
 def generate_fn(*args):
     if len(args) > 0:
         prompt = args[0]
@@ -251,6 +279,33 @@ with gr.Blocks(
                             value=False,
                         )
 
+            # img2img tab
+            with gr.TabItem("🖼️ Image"):
+                with gr.Row():
+                    image_prompt = gr.Image(
+                        show_label=False,
+                        min_width=320,
+                        format="png",
+                        type="pil",
+                        scale=0,
+                    )
+
+                with gr.Row():
+                    image_select = gr.Dropdown(
+                        choices=[("None", -1)],
+                        label="Load from Gallery",
+                        interactive=True,
+                        filterable=False,
+                        value=-1,
+                    )
+                    denoising_strength = gr.Slider(
+                        value=Config.DENOISING_STRENGTH,
+                        label="Denoising Strength",
+                        minimum=0.0,
+                        maximum=1.0,
+                        step=0.1,
+                    )
+
             with gr.TabItem("ℹ️ Usage"):
                 gr.Markdown(read_file("usage.md"), elem_classes=["markdown"])
 
@@ -308,9 +363,9 @@ with gr.Blocks(
     seed.change(None, inputs=[seed], outputs=[], js=seed_js)
 
     file_format.change(
-        lambda f: gr.Gallery(format=f),
+        lambda f: (gr.Gallery(format=f), gr.Image(format=f)),
         inputs=[file_format],
-        outputs=[output_images],
+        outputs=[output_images, image_prompt],
         show_api=False,
     )
 
@@ -320,6 +375,30 @@ with gr.Blocks(
         inputs=[aspect_ratio, width, height],
         outputs=[width, height],
         js=aspect_ratio_js,
+    )
+
+    # lock the input image so you don't lose it when the gallery updates
+    output_images.change(
+        gallery_fn,
+        inputs=[output_images, image_prompt],
+        outputs=[image_select],
+        show_api=False,
+    )
+
+    # show the selected image in the image input
+    image_select.change(
+        image_select_fn,
+        inputs=[output_images, image_prompt, image_select],
+        outputs=[image_prompt],
+        show_api=False,
+    )
+
+    # reset the dropdown on clear
+    image_prompt.clear(
+        image_prompt_fn,
+        inputs=[output_images],
+        outputs=[image_select],
+        show_api=False,
     )
 
     # show "Custom" aspect ratio when manually changing width or height
@@ -340,6 +419,7 @@ with gr.Blocks(
         inputs=[
             prompt,
             negative_prompt,
+            image_prompt,
             embeddings,
             style,
             seed,
@@ -349,6 +429,7 @@ with gr.Blocks(
             height,
             guidance_scale,
             inference_steps,
+            denoising_strength,
             num_images,
             use_karras,
             use_taesd,
