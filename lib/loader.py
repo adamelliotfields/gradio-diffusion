@@ -72,7 +72,7 @@ class Loader:
             print("Switching to Tiny VAE...")
             self.pipe.vae = AutoencoderTiny.from_pretrained(
                 pretrained_model_name_or_path="madebyollin/taesd",
-            ).to(self.pipe.device)
+            ).to(self.pipe.device, self.pipe.dtype)
             return
 
         if is_tiny and not taesd:
@@ -81,7 +81,7 @@ class Loader:
                 pretrained_model_name_or_path=model_name,
                 subfolder="vae",
                 variant=variant,
-            ).to(self.pipe.device)
+            ).to(self.pipe.device, self.pipe.dtype)
             self.pipe.vae = torch.compile(
                 mode="reduce-overhead",
                 fullgraph=True,

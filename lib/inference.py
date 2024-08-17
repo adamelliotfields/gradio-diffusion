@@ -7,12 +7,14 @@ from datetime import datetime
 from itertools import product
 from typing import Callable
 
+import numpy as np
 import spaces
 import tomesd
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
+from PIL import Image
 
 from .loader import Loader
 
@@ -64,6 +66,21 @@ def apply_style(prompt, style_id, negative=False):
             else:
                 return style["prompt"].format(prompt=prompt)
     return prompt
+
+
+def prepare_image(input, size=(512, 512)):
+    image = None
+    if isinstance(input, Image.Image):
+        image = input
+    if isinstance(input, np.ndarray):
+        image = Image.fromarray(input)
+    if isinstance(input, str):
+        if os.path.isfile(input):
+            image = Image.open(input)
+    if image is not None:
+        return image.convert("RGB").resize(size, Image.Resampling.LANCZOS)
+    else:
+        raise ValueError("Invalid image prompt")
 
 
 @spaces.GPU(duration=40)
@@ -196,8 +213,8 @@ def generate(
             }
 
             if KIND == "img2img":
-                kwargs["image"] = image_prompt
                 kwargs["strength"] = denoising_strength
+                kwargs["image"] = prepare_image(image_prompt, (width, height))
 
             with token_merging(pipe, tome_ratio=tome_ratio):
                 try:

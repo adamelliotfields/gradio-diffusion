@@ -49,14 +49,13 @@ preload_from_hub:
 
 Gradio app for Stable Diffusion 1.5 including:
 * txt2img and img2img pipelines
-* curated models and TI embeddings
-* multiple samplers with Karras schedule
-* Compel prompting
+* Curated models and TI embeddings
 * 100+ styles from sdxl_prompt_styler
-* FreeU and Clip Skip for quality
-* DeepCache and ToMe for speed
+* Compel prompt weighting
+* Multiple samplers with Karras scheduling
+* DeepCache, ToMe, FreeU, and Clip Skip available
 * Real-ESRGAN upscaling
-* optional TAESD
+* Optional tiny autoencoder
 
 ## Usage
 
@@ -84,5 +83,4 @@ python cli.py 'an astronaut riding a horse on mars'
 
 ## TODO
 
-- [ ] Metadata embed and display
 - [ ] IP-Adapter and T2I-Adapter

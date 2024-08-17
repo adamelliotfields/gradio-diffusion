@@ -48,11 +48,10 @@ def random_fn():
 def gallery_fn(images, image):
     if image is not None:
         return gr.Dropdown(
-            choices=[("🔒", -1)],
+            choices=[("🔒", -2)],
             interactive=False,
-            value=-1,
+            value=-2,
         )
-
     return gr.Dropdown(
         choices=[("None", -1)]
         + [(str(i + 1), i) for i, _ in enumerate(images if images is not None else [])],
@@ -67,9 +66,12 @@ def image_prompt_fn(images):
 
 # can't use image input in JS
 def image_select_fn(images, image, i):
-    if image is not None and i == -1:
-        return gr.Image(value=image)
-    return gr.Image(value=images[i][0]) if i > -1 else None
+    # -2 is the lock icon, -1 is None
+    if i == -2:
+        return gr.Image(image)
+    if i == -1:
+        return gr.Image(None)
+    return gr.Image(images[i][0]) if i > -1 else None
 
 
 def generate_fn(*args):
