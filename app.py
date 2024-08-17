@@ -177,11 +177,12 @@ with gr.Blocks(
                             maximum=50,
                             step=1,
                         )
-                        seed = gr.Number(
-                            value=Config.SEED,
-                            label="Seed",
-                            minimum=-1,
-                            maximum=(2**64) - 1,
+                        deepcache_interval = gr.Slider(
+                            value=Config.DEEPCACHE_INTERVAL,
+                            label="DeepCache",
+                            minimum=1,
+                            maximum=4,
+                            step=1,
                         )
 
                     with gr.Row():
@@ -212,39 +213,31 @@ with gr.Blocks(
                             filterable=False,
                             label="Aspect Ratio",
                         )
-                        scale = gr.Dropdown(
-                            choices=[(f"{s}x", s) for s in Config.SCALES],
-                            filterable=False,
-                            value=Config.SCALE,
-                            label="Scale",
-                        )
 
                     with gr.Row():
-                        num_images = gr.Dropdown(
-                            choices=list(range(1, 5)),
-                            value=Config.NUM_IMAGES,
-                            filterable=False,
-                            label="Images",
-                        )
                         file_format = gr.Dropdown(
                             choices=["png", "jpeg", "webp"],
                             label="File Format",
                             filterable=False,
                             value="png",
                         )
-                        deepcache_interval = gr.Slider(
-                            value=Config.DEEPCACHE_INTERVAL,
-                            label="DeepCache",
-                            minimum=1,
-                            maximum=4,
-                            step=1,
+                        num_images = gr.Dropdown(
+                            choices=list(range(1, 5)),
+                            value=Config.NUM_IMAGES,
+                            filterable=False,
+                            label="Images",
                         )
-                        tome_ratio = gr.Slider(
-                            value=Config.TOME_RATIO,
-                            label="ToMe Ratio",
-                            minimum=0.0,
-                            maximum=0.5,
-                            step=0.01,
+                        scale = gr.Dropdown(
+                            choices=[(f"{s}x", s) for s in Config.SCALES],
+                            filterable=False,
+                            value=Config.SCALE,
+                            label="Scale",
+                        )
+                        seed = gr.Number(
+                            value=Config.SEED,
+                            label="Seed",
+                            minimum=-1,
+                            maximum=(2**64) - 1,
                         )
 
                     with gr.Row():
@@ -440,7 +433,6 @@ with gr.Blocks(
             truncate_prompts,
             increment_seed,
             deepcache_interval,
-            tome_ratio,
             scale,
         ],
     )

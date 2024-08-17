@@ -71,10 +71,6 @@ Denoising strength is essentially how much the generation will differ from the i
 * `3`: balanced
 * `4`: more speed
 
-#### ToMe
-
-[Token merging](https://github.com/dbolya/tomesd) (Bolya & Hoffman 2023) reduces the number of tokens processed by the model. Set `Ratio` to the desired reduction factor. Only necessary to speed up generation on older GPUs.
-
 #### FreeU
 
 [FreeU](https://github.com/ChenyangSi/FreeU) (Si et al. 2023) re-weights the contributions sourced from the U-Net’s skip connections and backbone feature maps to potentially improve image quality.

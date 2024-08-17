@@ -2,14 +2,12 @@ import json
 import os
 import re
 import time
-from contextlib import contextmanager
 from datetime import datetime
 from itertools import product
 from typing import Callable
 
 import numpy as np
 import spaces
-import tomesd
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
@@ -23,17 +21,6 @@ __import__("transformers").logging.set_verbosity_error()
 
 with open("./data/styles.json") as f:
     styles = json.load(f)
-
-
-# applies tome to the pipeline
-@contextmanager
-def token_merging(pipe, tome_ratio=0):
-    try:
-        if tome_ratio > 0:
-            tomesd.apply_patch(pipe, max_downsample=1, sx=2, sy=2, ratio=tome_ratio)
-        yield
-    finally:
-        tomesd.remove_patch(pipe)  # idempotent
 
 
 # parse prompts with arrays
@@ -106,7 +93,6 @@ def generate(
     truncate_prompts=False,
     increment_seed=True,
     deepcache=1,
-    tome_ratio=0,
     scale=1,
     Info: Callable[[str], None] = None,
     Error=Exception,
@@ -216,15 +202,14 @@ def generate(
                 kwargs["strength"] = denoising_strength
                 kwargs["image"] = prepare_image(image_prompt, (width, height))
 
-            with token_merging(pipe, tome_ratio=tome_ratio):
-                try:
-                    image = pipe(**kwargs).images[0]
-                    if scale > 1:
-                        image = upscaler.predict(image)
-                    images.append((image, str(current_seed)))
-                finally:
-                    pipe.unload_textual_inversion()
-                    torch.cuda.empty_cache()
+            try:
+                image = pipe(**kwargs).images[0]
+                if scale > 1:
+                    image = upscaler.predict(image)
+                images.append((image, str(current_seed)))
+            finally:
+                pipe.unload_textual_inversion()
+                torch.cuda.empty_cache()
 
             if increment_seed:
                 current_seed += 1

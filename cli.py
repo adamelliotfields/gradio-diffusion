@@ -29,7 +29,6 @@ def main():
     parser.add_argument("--scheduler", type=str, metavar="STR", default=Config.SCHEDULER)
     parser.add_argument("--guidance", type=float, metavar="FLOAT", default=Config.GUIDANCE_SCALE)
     parser.add_argument("--steps", type=int, metavar="INT", default=Config.INFERENCE_STEPS)
-    parser.add_argument("--tome", type=float, metavar="FLOAT", default=Config.TOME_RATIO)
     parser.add_argument("--strength", type=float, metavar="FLOAT", default=Config.DENOISING_STRENGTH)
     parser.add_argument("--image", type=str, metavar="STR")
     parser.add_argument("--taesd", action="store_true")
@@ -63,7 +62,6 @@ def main():
         args.truncate,
         args.no_increment,
         args.deepcache,
-        args.tome,
         args.scale,
     )
     save_images(images, args.filename)
