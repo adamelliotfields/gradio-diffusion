@@ -12,6 +12,8 @@ Positive and negative prompts are embedded by [Compel](https://github.com/damian
 
 Note that `++` is `1.1^2` (and so on). See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more and read [Civitai](https://civitai.com)'s guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/) for best practices.
 
+You can also press the `🎲` button to generate a random prompt.
+
 #### Arrays
 
 Arrays allow you to generate different images from a single prompt. For example, `[[cat,corgi]]` will expand into 2 separate prompts. Make sure `Images` is set accordingly (e.g., 2). Only works for the positive prompt. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
@@ -30,7 +32,7 @@ Styles are prompt templates from twri's [sdxl_prompt_styler](https://github.com/
 
 ### Scale
 
-Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN).
+Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) (Wang et al. 2021).
 
 ### Models
 
@@ -45,27 +47,25 @@ Each model checkpoint has a different aesthetic:
 
 ### Schedulers
 
-Optionally, the [Karras](https://arxiv.org/abs/2206.00364) noise schedule can be used:
-
-* [DEIS 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/deis) (default)
-* [DPM++ 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/multistep_dpm_solver)
-* [DPM2 a](https://huggingface.co/docs/diffusers/api/schedulers/dpm_discrete_ancestral)
-* [Euler a](https://huggingface.co/docs/diffusers/en/api/schedulers/euler_ancestral)
-* [Heun](https://huggingface.co/docs/diffusers/api/schedulers/heun)
-* [LMS](https://huggingface.co/docs/diffusers/api/schedulers/lms_discrete)
-* [PNDM](https://huggingface.co/docs/diffusers/api/schedulers/pndm)
+The default is [DEIS 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/deis) with [Karras](https://arxiv.org/abs/2206.00364) enabled. The other multistep scheduler, [DPM++ 2M](https://huggingface.co/docs/diffusers/en/api/schedulers/multistep_dpm_solver), is also good. For realism, [DDIM](https://huggingface.co/docs/diffusers/en/api/schedulers/ddim) is recommended. [Euler a](https://huggingface.co/docs/diffusers/en/api/schedulers/euler_ancestral) is worth trying for a different look.
 
 ### Image-to-Image
 
-The `🖼️ Image` tab enables the image-to-image pipeline. Either use the image input or select a generation from the gallery and then adjust the denoising strength. To disable, simply clear the image input (the `x` overlay button).
+The `🖼️ Image` tab enables the image-to-image and IP-Adapter pipelines. Either use the image input or select a generation from the gallery. To disable, simply clear the image input (the `x` overlay button).
 
-Denoising strength is essentially how much the generation will differ from the input image. A value of `0` will be identical to the original, while `1` will be a completely new image. You may want to also increase the number of inference steps.
+Denoising strength is essentially how much the generation will differ from the input image. A value of `0` will be identical to the original, while `1` will be a completely new image. You may want to also increase the number of inference steps. Only applies to the image-to-image input.
+
+### IP-Adapter
+
+In an image-to-image pipeline, the input image is used as the initial latent. With [IP-Adapter](https://github.com/tencent-ailab/IP-Adapter) (Ye et al. 2023), the input image is processed by a separate image encoder and the encoded features are used as conditioning along with the text prompt.
+
+For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face along with the Realistic Vision model. The input image should also be the same aspect ratio as the output to avoid distortion.
 
 ### Advanced
 
 #### DeepCache
 
-[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower U-Net layers and reuses them every `Interval` steps:
+[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower UNet layers and reuses them every `Interval` steps:
 * `1`: no caching
 * `2`: more quality (default)
 * `3`: balanced
@@ -73,7 +73,7 @@ Denoising strength is essentially how much the generation will differ from the i
 
 #### FreeU
 
-[FreeU](https://github.com/ChenyangSi/FreeU) (Si et al. 2023) re-weights the contributions sourced from the U-Net’s skip connections and backbone feature maps to potentially improve image quality.
+[FreeU](https://github.com/ChenyangSi/FreeU) (Si et al. 2023) re-weights the contributions sourced from the UNet’s skip connections and backbone feature maps to potentially improve image quality.
 
 #### Clip Skip
 
@@ -81,7 +81,7 @@ When enabled, the last CLIP layer is skipped. This can sometimes improve image q
 
 #### Tiny VAE
 
-Enable [madebyollin/taesd](https://github.com/madebyollin/taesd) for almost instant latent decoding with a minor loss in detail. Useful for development.
+Enable [madebyollin/taesd](https://github.com/madebyollin/taesd) for near-instant latent decoding with a minor loss in detail. Useful for development.
 
 #### Prompt Truncation
 

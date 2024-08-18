@@ -1,17 +1,17 @@
 import torch
 from DeepCache import DeepCacheSDHelper
 from diffusers import (
+    DDIMScheduler,
     DEISMultistepScheduler,
     DPMSolverMultistepScheduler,
     EulerAncestralDiscreteScheduler,
-    HeunDiscreteScheduler,
-    KDPM2AncestralDiscreteScheduler,
-    LMSDiscreteScheduler,
+    EulerDiscreteScheduler,
     PNDMScheduler,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionPipeline,
 )
 from diffusers.models import AutoencoderKL, AutoencoderTiny
+from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
 from torch._dynamo import OptimizedModule
 
 from .upscaler import RealESRGAN
@@ -29,6 +29,7 @@ class Loader:
             cls._instance = super(Loader, cls).__new__(cls)
             cls._instance.pipe = None
             cls._instance.upscaler = None
+            cls._instance.ip_adapter = None
         return cls._instance
 
     def _load_upscaler(self, device=None, scale=4):
@@ -61,7 +62,38 @@ class Loader:
             # https://github.com/ChenyangSi/FreeU
             self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
-    def _load_vae(self, model_name=None, taesd=False, variant=None):
+    def _load_ip_adapter(self, ip_adapter=None):
+        if self.ip_adapter is None and self.ip_adapter != ip_adapter:
+            self.pipe.load_ip_adapter(
+                "h94/IP-Adapter",
+                subfolder="models",
+                weight_name=f"ip-adapter-{ip_adapter}_sd15.safetensors",
+            )
+            self.pipe.set_ip_adapter_scale(0.6 if ip_adapter == "full-face" else 0.5)
+            self.ip_adapter = ip_adapter
+
+        if self.ip_adapter is not None and ip_adapter is None:
+            if not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
+                self.pipe.image_encoder = None
+                self.pipe.register_to_config(image_encoder=[None, None])
+
+            self.pipe.feature_extractor = None
+            self.pipe.unet.encoder_hid_proj = None
+            self.pipe.unet.config.encoder_hid_dim_type = None
+            self.pipe.register_to_config(feature_extractor=[None, None])
+
+            attn_procs = {}
+            for name, value in self.pipe.unet.attn_processors.items():
+                attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
+                attn_procs[name] = (
+                    attn_processor_class
+                    if isinstance(value, IPAdapterAttnProcessor2_0)
+                    else value.__class__()
+                )
+            self.pipe.unet.set_attn_processor(attn_procs)
+            self.pipe.ip_adapter = None
+
+    def _load_vae(self, taesd=False, model_name=None, variant=None):
         vae_type = type(self.pipe.vae)
         is_kl = issubclass(vae_type, (AutoencoderKL, OptimizedModule))
         is_tiny = issubclass(vae_type, AutoencoderTiny)
@@ -97,10 +129,12 @@ class Loader:
             self.pipe = pipelines[kind].from_pretrained(model, **kwargs).to(device, dtype)
         if not isinstance(self.pipe, pipelines[kind]):
             self.pipe = pipelines[kind].from_pipe(self.pipe).to(device, dtype)
+            self.ip_adapter = None
 
     def load(
         self,
         kind,
+        ip_adapter,
         model,
         scheduler,
         karras,
@@ -114,26 +148,29 @@ class Loader:
         model_lower = model.lower()
 
         schedulers = {
+            "DDIM": DDIMScheduler,
             "DEIS 2M": DEISMultistepScheduler,
             "DPM++ 2M": DPMSolverMultistepScheduler,
-            "DPM2 a": KDPM2AncestralDiscreteScheduler,
+            "Euler": EulerDiscreteScheduler,
             "Euler a": EulerAncestralDiscreteScheduler,
-            "Heun": HeunDiscreteScheduler,
-            "LMS": LMSDiscreteScheduler,
             "PNDM": PNDMScheduler,
         }
 
         scheduler_kwargs = {
             "beta_schedule": "scaled_linear",
             "timestep_spacing": "leading",
-            "use_karras_sigmas": karras,
             "beta_start": 0.00085,
             "beta_end": 0.012,
             "steps_offset": 1,
         }
 
-        if scheduler in ["Euler a", "PNDM"]:
-            del scheduler_kwargs["use_karras_sigmas"]
+        if scheduler not in ["DDIM", "Euler a", "PNDM"]:
+            scheduler_kwargs["use_karras_sigmas"] = karras
+
+        # https://github.com/huggingface/diffusers/blob/8a3f0c1/scripts/convert_original_stable_diffusion_to_diffusers.py#L939
+        if scheduler == "DDIM":
+            scheduler_kwargs["clip_sample"] = False
+            scheduler_kwargs["set_alpha_to_one"] = False
 
         # no fp16 variant
         if model_lower not in [
@@ -175,7 +212,8 @@ class Loader:
             self.pipe = None
             self._load_pipeline(kind, model_lower, device, dtype, **pipe_kwargs)
 
-        self._load_vae(model_lower, taesd, variant)
+        self._load_ip_adapter(ip_adapter)
+        self._load_vae(taesd, model_lower, variant)
         self._load_freeu(freeu)
         self._load_deepcache(deepcache)
         self._load_upscaler(device, scale)

@@ -75,6 +75,8 @@ def generate(
     positive_prompt,
     negative_prompt="",
     image_prompt=None,
+    ip_image=None,
+    ip_face=False,
     embeddings=[],
     style=None,
     seed=None,
@@ -120,11 +122,17 @@ def generate(
 
     KIND = "img2img" if image_prompt is not None else "txt2img"
 
+    IP_ADAPTER = None
+
+    if ip_image:
+        IP_ADAPTER = "full-face" if ip_face else "plus"
+
     with torch.inference_mode():
         start = time.perf_counter()
         loader = Loader()
         pipe, upscaler = loader.load(
             KIND,
+            IP_ADAPTER,
             model,
             scheduler,
             karras,
@@ -146,10 +154,12 @@ def generate(
                     token=f"<{embedding}>",
                 )
                 negative_prompt = (
-                    f"{negative_prompt}, {embedding}" if negative_prompt else embedding
+                    f"{negative_prompt}, (<{embedding}>)1.1"
+                    if negative_prompt
+                    else f"(<{embedding}>)1.1"
                 )
             except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
-                raise Error(f"Invalid embedding: {embedding}")
+                raise Error(f"Invalid embedding: <{embedding}>")
 
         # prompt embeds
         compel = Compel(
@@ -201,6 +211,9 @@ def generate(
             if KIND == "img2img":
                 kwargs["strength"] = denoising_strength
                 kwargs["image"] = prepare_image(image_prompt, (width, height))
+
+            if IP_ADAPTER:
+                kwargs["ip_adapter_image"] = prepare_image(ip_image, (width, height))
 
             try:
                 image = pipe(**kwargs).images[0]

@@ -16,6 +16,7 @@ license: apache-2.0
 models:
 - ai-forever/Real-ESRGAN
 - fluently/Fluently-v4
+- h94/IP-Adapter
 - Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
 - prompthero/openjourney-v4
@@ -28,6 +29,9 @@ preload_from_hub:
 - >-
   fluently/Fluently-v4
   text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
+- >-
+  h94/IP-Adapter
+  models/ip-adapter-full-face_sd15.safetensors,models/ip-adapter-plus_sd15.safetensors,models/image_encoder/model.safetensors
 - >-
   Linaqruf/anything-v3-1
   text_encoder/model.safetensors,unet/diffusion_pytorch_model.safetensors,vae/diffusion_pytorch_model.safetensors
@@ -48,9 +52,10 @@ preload_from_hub:
 # diffusion
 
 Gradio app for Stable Diffusion 1.5 including:
-* txt2img and img2img pipelines
+* txt2img and img2img pipelines with IP-Adapter
 * Curated models and TI embeddings
 * 100+ styles from sdxl_prompt_styler
+* 150+ prompts from StableStudio
 * Compel prompt weighting
 * Multiple samplers with Karras scheduling
 * DeepCache, FreeU, and Clip Skip available
@@ -80,7 +85,3 @@ python app.py --port 7860
 # cli
 python cli.py 'an astronaut riding a horse on mars'
 ```
-
-## TODO
-
-- [ ] IP-Adapter and T2I-Adapter

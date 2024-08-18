@@ -44,27 +44,32 @@ def random_fn():
     return gr.Textbox(value=random.choice(prompts))
 
 
-# can't toggle interactive in JS
-def gallery_fn(images, image):
-    if image is not None:
+def create_image_dropdown(images, locked=False):
+    if locked:
         return gr.Dropdown(
             choices=[("🔒", -2)],
             interactive=False,
             value=-2,
         )
-    return gr.Dropdown(
-        choices=[("None", -1)]
-        + [(str(i + 1), i) for i, _ in enumerate(images if images is not None else [])],
-        interactive=True,
-        value=-1,
+    else:
+        return gr.Dropdown(
+            choices=[("None", -1)] + [(str(i + 1), i) for i, _ in enumerate(images or [])],
+            interactive=True,
+            value=-1,
+        )
+
+
+def gallery_fn(images, image, ip_image):
+    return (
+        create_image_dropdown(images, locked=image is not None),
+        create_image_dropdown(images, locked=ip_image is not None),
     )
 
 
 def image_prompt_fn(images):
-    return gallery_fn(images, None)
+    return create_image_dropdown(images)
 
 
-# can't use image input in JS
 def image_select_fn(images, image, i):
     # -2 is the lock icon, -1 is None
     if i == -2:
@@ -278,28 +283,52 @@ with gr.Blocks(
             with gr.TabItem("🖼️ Image"):
                 with gr.Row():
                     image_prompt = gr.Image(
+                        show_share_button=False,
                         show_label=False,
                         min_width=320,
                         format="png",
                         type="pil",
-                        scale=0,
+                    )
+                    ip_image = gr.Image(
+                        show_share_button=False,
+                        label="IP-Adapter",
+                        min_width=320,
+                        format="png",
+                        type="pil",
                     )
 
-                with gr.Row():
-                    image_select = gr.Dropdown(
-                        choices=[("None", -1)],
-                        label="Load from Gallery",
-                        interactive=True,
-                        filterable=False,
-                        value=-1,
-                    )
-                    denoising_strength = gr.Slider(
-                        value=Config.DENOISING_STRENGTH,
-                        label="Denoising Strength",
-                        minimum=0.0,
-                        maximum=1.0,
-                        step=0.1,
-                    )
+                with gr.Group():
+                    with gr.Row():
+                        image_select = gr.Dropdown(
+                            choices=[("None", -1)],
+                            label="Gallery Image",
+                            interactive=True,
+                            filterable=False,
+                            value=-1,
+                        )
+                        ip_image_select = gr.Dropdown(
+                            choices=[("None", -1)],
+                            label="Gallery Image (IP-Adapter)",
+                            interactive=True,
+                            filterable=False,
+                            value=-1,
+                        )
+
+                    with gr.Row():
+                        denoising_strength = gr.Slider(
+                            value=Config.DENOISING_STRENGTH,
+                            label="Denoising Strength",
+                            minimum=0.0,
+                            maximum=1.0,
+                            step=0.1,
+                        )
+
+                    with gr.Row():
+                        ip_face = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="IP-Adapter Face",
+                            value=False,
+                        )
 
             with gr.TabItem("ℹ️ Usage"):
                 gr.Markdown(read_file("usage.md"), elem_classes=["markdown"])
@@ -358,9 +387,9 @@ with gr.Blocks(
     seed.change(None, inputs=[seed], outputs=[], js=seed_js)
 
     file_format.change(
-        lambda f: (gr.Gallery(format=f), gr.Image(format=f)),
+        lambda f: (gr.Gallery(format=f), gr.Image(format=f), gr.Image(format=f)),
         inputs=[file_format],
-        outputs=[output_images, image_prompt],
+        outputs=[output_images, image_prompt, ip_image],
         show_api=False,
     )
 
@@ -372,11 +401,11 @@ with gr.Blocks(
         js=aspect_ratio_js,
     )
 
-    # lock the input image so you don't lose it when the gallery updates
+    # lock the input images so you don't lose them when the gallery updates
     output_images.change(
         gallery_fn,
-        inputs=[output_images, image_prompt],
-        outputs=[image_select],
+        inputs=[output_images, image_prompt, ip_image],
+        outputs=[image_select, ip_image_select],
         show_api=False,
     )
 
@@ -387,12 +416,24 @@ with gr.Blocks(
         outputs=[image_prompt],
         show_api=False,
     )
+    ip_image_select.change(
+        image_select_fn,
+        inputs=[output_images, ip_image, ip_image_select],
+        outputs=[ip_image],
+        show_api=False,
+    )
 
     # reset the dropdown on clear
     image_prompt.clear(
         image_prompt_fn,
         inputs=[output_images],
         outputs=[image_select],
+        show_api=False,
+    )
+    ip_image.clear(
+        image_prompt_fn,
+        inputs=[output_images],
+        outputs=[ip_image_select],
         show_api=False,
     )
 
@@ -415,6 +456,8 @@ with gr.Blocks(
             prompt,
             negative_prompt,
             image_prompt,
+            ip_image,
+            ip_face,
             embeddings,
             style,
             seed,

@@ -47,6 +47,10 @@
   max-width: 42px;
 }
 
+.image-container {
+  max-height: 438px;
+}
+
 .popover {
   position: relative;
 }

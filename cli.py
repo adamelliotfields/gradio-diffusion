@@ -31,6 +31,8 @@ def main():
     parser.add_argument("--steps", type=int, metavar="INT", default=Config.INFERENCE_STEPS)
     parser.add_argument("--strength", type=float, metavar="FLOAT", default=Config.DENOISING_STRENGTH)
     parser.add_argument("--image", type=str, metavar="STR")
+    parser.add_argument("--ip-image", type=str, metavar="STR")
+    parser.add_argument("--ip-face", action="store_true")
     parser.add_argument("--taesd", action="store_true")
     parser.add_argument("--clip-skip", action="store_true")
     parser.add_argument("--truncate", action="store_true")
@@ -44,6 +46,8 @@ def main():
         args.prompt,
         args.negative,
         args.image,
+        args.ip_image,
+        args.ip_face,
         args.embedding,
         args.style,
         args.seed,
