@@ -104,31 +104,33 @@ class Loader:
             print("Switching to Tiny VAE...")
             self.pipe.vae = AutoencoderTiny.from_pretrained(
                 pretrained_model_name_or_path="madebyollin/taesd",
-            ).to(self.pipe.device, self.pipe.dtype)
+                torch_dtype=self.pipe.dtype,
+            ).to(self.pipe.device)
             return
 
         if is_tiny and not taesd:
             print("Switching to KL VAE...")
             model = AutoencoderKL.from_pretrained(
                 pretrained_model_name_or_path=model_name,
+                torch_dtype=self.pipe.dtype,
                 subfolder="vae",
                 variant=variant,
-            ).to(self.pipe.device, self.pipe.dtype)
+            ).to(self.pipe.device)
             self.pipe.vae = torch.compile(
                 mode="reduce-overhead",
                 fullgraph=True,
                 model=model,
             )
 
-    def _load_pipeline(self, kind, model, device, dtype, **kwargs):
+    def _load_pipeline(self, kind, model, device, **kwargs):
         pipelines = {
             "txt2img": StableDiffusionPipeline,
             "img2img": StableDiffusionImg2ImgPipeline,
         }
         if self.pipe is None:
-            self.pipe = pipelines[kind].from_pretrained(model, **kwargs).to(device, dtype)
+            self.pipe = pipelines[kind].from_pretrained(model, **kwargs).to(device)
         if not isinstance(self.pipe, pipelines[kind]):
-            self.pipe = pipelines[kind].from_pipe(self.pipe).to(device, dtype)
+            self.pipe = pipelines[kind].from_pipe(self.pipe).to(device)
             self.ip_adapter = None
 
     def load(
@@ -186,13 +188,14 @@ class Loader:
             "scheduler": schedulers[scheduler](**scheduler_kwargs),
             "requires_safety_checker": False,
             "safety_checker": None,
+            "torch_dtype": dtype,
             "variant": variant,
         }
 
         if self.pipe is None:
             print(f"Loading {model_lower} with {'Tiny' if taesd else 'KL'} VAE...")
 
-        self._load_pipeline(kind, model_lower, device, dtype, **pipe_kwargs)
+        self._load_pipeline(kind, model_lower, device, **pipe_kwargs)
         model_name = self.pipe.config._name_or_path
         same_model = model_name.lower() == model_lower
         same_scheduler = isinstance(self.pipe.scheduler, schedulers[scheduler])
@@ -210,7 +213,7 @@ class Loader:
                 self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
         else:
             self.pipe = None
-            self._load_pipeline(kind, model_lower, device, dtype, **pipe_kwargs)
+            self._load_pipeline(kind, model_lower, device, **pipe_kwargs)
 
         self._load_ip_adapter(ip_adapter)
         self._load_vae(taesd, model_lower, variant)

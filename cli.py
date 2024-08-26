@@ -1,8 +1,9 @@
 # CLI
 # usage: python cli.py 'colorful calico cat artstation'
 import argparse
+import asyncio
 
-from lib import Config, generate
+from lib import Config, async_call, generate
 
 
 def save_images(images, filename="image.png"):
@@ -11,7 +12,7 @@ def save_images(images, filename="image.png"):
         img.save(f"{name}.{ext}" if len(images) == 1 else f"{name}_{i}.{ext}")
 
 
-def main():
+async def main():
     # fmt: off
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("prompt", type=str, metavar="PROMPT")
@@ -42,7 +43,8 @@ def main():
     # fmt: on
 
     args = parser.parse_args()
-    images = generate(
+    images = await async_call(
+        generate,
         args.prompt,
         args.negative,
         args.image,
@@ -68,8 +70,8 @@ def main():
         args.deepcache,
         args.scale,
     )
-    save_images(images, args.filename)
+    await async_call(save_images, images, args.filename)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

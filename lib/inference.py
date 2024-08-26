@@ -1,26 +1,48 @@
+import functools
+import inspect
 import json
 import os
 import re
 import time
 from datetime import datetime
 from itertools import product
-from typing import Callable
+from typing import Callable, TypeVar
 
+import anyio
 import numpy as np
 import spaces
 import torch
+from anyio import Semaphore
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
 from PIL import Image
+from typing_extensions import ParamSpec
 
 from .loader import Loader
 
 __import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
 __import__("transformers").logging.set_verbosity_error()
 
+T = TypeVar("T")
+P = ParamSpec("P")
+
+MAX_CONCURRENT_THREADS = 1
+MAX_THREADS_GUARD = Semaphore(MAX_CONCURRENT_THREADS)
+
 with open("./data/styles.json") as f:
-    styles = json.load(f)
+    STYLES = json.load(f)
+
+
+# like the original but supports args and kwargs instead of a dict
+# https://github.com/huggingface/huggingface-inference-toolkit/blob/0.2.0/src/huggingface_inference_toolkit/async_utils.py
+async def async_call(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    async with MAX_THREADS_GUARD:
+        sig = inspect.signature(fn)
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        partial_fn = functools.partial(fn, **bound_args.arguments)
+        return await anyio.to_thread.run_sync(partial_fn)
 
 
 # parse prompts with arrays
@@ -43,10 +65,10 @@ def parse_prompt(prompt: str) -> list[str]:
 
 
 def apply_style(prompt, style_id, negative=False):
-    global styles
+    global STYLES
     if not style_id or style_id == "None":
         return prompt
-    for style in styles:
+    for style in STYLES:
         if style["id"] == style_id:
             if negative:
                 return prompt + " . " + style["negative_prompt"]
@@ -55,7 +77,7 @@ def apply_style(prompt, style_id, negative=False):
     return prompt
 
 
-def prepare_image(input, size=(512, 512)):
+def prepare_image(input, size=None):
     image = None
     if isinstance(input, Image.Image):
         image = input
@@ -65,7 +87,11 @@ def prepare_image(input, size=(512, 512)):
         if os.path.isfile(input):
             image = Image.open(input)
     if image is not None:
-        return image.convert("RGB").resize(size, Image.Resampling.LANCZOS)
+        image = image.convert("RGB")
+    if size is not None:
+        image = image.resize(size, Image.Resampling.LANCZOS)
+    if image is not None:
+        return image
     else:
         raise ValueError("Invalid image prompt")
 
@@ -213,7 +239,9 @@ def generate(
                 kwargs["image"] = prepare_image(image_prompt, (width, height))
 
             if IP_ADAPTER:
-                kwargs["ip_adapter_image"] = prepare_image(ip_image, (width, height))
+                # don't resize full-face images
+                size = None if ip_face else (width, height)
+                kwargs["ip_adapter_image"] = prepare_image(ip_image, size)
 
             try:
                 image = pipe(**kwargs).images[0]

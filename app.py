@@ -4,7 +4,7 @@ import random
 
 import gradio as gr
 
-from lib import Config, generate
+from lib import Config, async_call, generate
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """
@@ -79,7 +79,7 @@ def image_select_fn(images, image, i):
     return gr.Image(images[i][0]) if i > -1 else None
 
 
-def generate_fn(*args):
+async def generate_fn(*args):
     if len(args) > 0:
         prompt = args[0]
     else:
@@ -87,7 +87,7 @@ def generate_fn(*args):
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
     try:
-        images = generate(*args, Info=gr.Info, Error=gr.Error)
+        images = await async_call(generate, *args, Info=gr.Info, Error=gr.Error)
     except RuntimeError:
         raise gr.Error("RuntimeError: Please try again")
     return images
@@ -194,25 +194,25 @@ with gr.Blocks(
                         width = gr.Slider(
                             value=Config.WIDTH,
                             label="Width",
-                            minimum=320,
+                            minimum=256,
                             maximum=768,
-                            step=16,
+                            step=32,
                         )
                         height = gr.Slider(
                             value=Config.HEIGHT,
                             label="Height",
-                            minimum=320,
+                            minimum=256,
                             maximum=768,
-                            step=16,
+                            step=32,
                         )
                         aspect_ratio = gr.Dropdown(
                             choices=[
                                 ("Custom", None),
+                                ("4:7 (384x672)", "384,672"),
                                 ("7:9 (448x576)", "448,576"),
-                                ("3:4 (432x576)", "432,576"),
                                 ("1:1 (512x512)", "512,512"),
-                                ("4:3 (576x432)", "576,432"),
                                 ("9:7 (576x448)", "576,448"),
+                                ("7:4 (672x384)", "672,384"),
                             ],
                             value="448,576",
                             filterable=False,
