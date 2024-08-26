@@ -57,22 +57,27 @@ class Loader:
         attrs = ["b1", "b2", "s1", "s2"]
         has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
         if has_freeu and not freeu:
+            print("Disabling FreeU...")
             self.pipe.disable_freeu()
         elif not has_freeu and freeu:
             # https://github.com/ChenyangSi/FreeU
+            print("Enabling FreeU...")
             self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
     def _load_ip_adapter(self, ip_adapter=None):
         if self.ip_adapter is None and self.ip_adapter != ip_adapter:
+            print(f"Loading IP Adapter: {ip_adapter}...")
             self.pipe.load_ip_adapter(
                 "h94/IP-Adapter",
                 subfolder="models",
                 weight_name=f"ip-adapter-{ip_adapter}_sd15.safetensors",
             )
-            self.pipe.set_ip_adapter_scale(0.6 if ip_adapter == "full-face" else 0.5)
+            # TODO: slider for ip_scale
+            self.pipe.set_ip_adapter_scale(0.5)
             self.ip_adapter = ip_adapter
 
         if self.ip_adapter is not None and ip_adapter is None:
+            print("Unloading IP Adapter...")
             if not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
                 self.pipe.image_encoder = None
                 self.pipe.register_to_config(image_encoder=[None, None])
