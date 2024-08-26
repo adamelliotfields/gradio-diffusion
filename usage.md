@@ -1,6 +1,6 @@
 ## Usage
 
-Enter a prompt and click `Generate`.
+Enter a prompt and click `Generate`. Roll the `🎲` for a random prompt.
 
 ### Prompting
 
@@ -11,8 +11,6 @@ Positive and negative prompts are embedded by [Compel](https://github.com/damian
 * `man, portrait, (blue eyes)0.9, close-up`
 
 Note that `++` is `1.1^2` (and so on). See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more and read [Civitai](https://civitai.com)'s guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/) for best practices.
-
-You can also press the `🎲` button to generate a random prompt.
 
 #### Arrays
 
@@ -59,25 +57,25 @@ Denoising strength is essentially how much the generation will differ from the i
 
 In an image-to-image pipeline, the input image is used as the initial latent. With [IP-Adapter](https://github.com/tencent-ailab/IP-Adapter) (Ye et al. 2023), the input image is processed by a separate image encoder and the encoded features are used as conditioning along with the text prompt.
 
-For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face along with the Realistic Vision model. The input image should also be the same aspect ratio as the output to avoid distortion.
+For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face along with the Realistic Vision model.
 
 ### Advanced
 
 #### DeepCache
 
-[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower UNet layers and reuses them every `Interval` steps:
-* `1`: no caching
-* `2`: more quality (default)
+[DeepCache](https://github.com/horseee/DeepCache) (Ma et al. 2023) caches lower UNet layers and reuses them every `Interval` steps. Trade quality for speed:
+* `1`: no caching (default)
+* `2`: more quality
 * `3`: balanced
 * `4`: more speed
 
 #### FreeU
 
-[FreeU](https://github.com/ChenyangSi/FreeU) (Si et al. 2023) re-weights the contributions sourced from the UNet’s skip connections and backbone feature maps to potentially improve image quality.
+[FreeU](https://github.com/ChenyangSi/FreeU) (Si et al. 2023) re-weights the contributions sourced from the UNet’s skip connections and backbone feature maps. Can sometimes improve image quality.
 
 #### Clip Skip
 
-When enabled, the last CLIP layer is skipped. This can sometimes improve image quality with anime models.
+When enabled, the last CLIP layer is skipped. Can sometimes improve image quality.
 
 #### Tiny VAE
 
