@@ -18,9 +18,12 @@ from .upscaler import RealESRGAN
 
 __import__("warnings").filterwarnings("ignore", category=FutureWarning, module="diffusers")
 
+PIPELINES = {
+    "txt2img": StableDiffusionPipeline,
+    "img2img": StableDiffusionImg2ImgPipeline,
+}
 
-# inspired by ComfyUI
-# https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/model_management.py
+
 class Loader:
     _instance = None
 
@@ -32,40 +35,69 @@ class Loader:
             cls._instance.ip_adapter = None
         return cls._instance
 
-    def _load_upscaler(self, device=None, scale=4):
-        same_scale = self.upscaler is not None and self.upscaler.scale == scale
-        if scale == 1:
-            self.upscaler = None
-        if scale > 1 and not same_scale:
-            self.upscaler = RealESRGAN(device=device, scale=scale)
-            self.upscaler.load_weights()
+    def _should_unload_upscaler(self, scale=1):
+        return self.upscaler is not None and scale == 1
 
-    def _load_deepcache(self, interval=1):
-        has_deepcache = hasattr(self.pipe, "deepcache")
-        if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
-            return
-        if has_deepcache:
-            self.pipe.deepcache.disable()
-        else:
-            self.pipe.deepcache = DeepCacheSDHelper(pipe=self.pipe)
-        self.pipe.deepcache.set_params(cache_interval=interval)
-        self.pipe.deepcache.enable()
+    def _should_unload_ip_adapter(self, ip_adapter=None):
+        return self.ip_adapter is not None and ip_adapter is None
 
-    def _load_freeu(self, freeu=False):
-        # https://github.com/huggingface/diffusers/blob/v0.30.0/src/diffusers/models/unets/unet_2d_condition.py
-        block = self.pipe.unet.up_blocks[0]
-        attrs = ["b1", "b2", "s1", "s2"]
-        has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
-        if has_freeu and not freeu:
-            print("Disabling FreeU...")
-            self.pipe.disable_freeu()
-        elif not has_freeu and freeu:
-            # https://github.com/ChenyangSi/FreeU
-            print("Enabling FreeU...")
-            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
+    def _should_unload_pipeline(self, kind="", model=""):
+        if self.pipe is None:
+            return False
+        if self.pipe.config._name_or_path.lower() != model.lower():
+            return True
+        if kind == "txt2img" and not isinstance(self.pipe, StableDiffusionPipeline):
+            return True  # txt2img -> img2img
+        if kind == "img2img" and not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
+            return True  # img2img -> txt2img
+        return False
+
+    def _unload_ip_adapter(self):
+        print("Unloading IP Adapter...")
+        if not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
+            self.pipe.image_encoder = None
+            self.pipe.register_to_config(image_encoder=[None, None])
+
+        self.pipe.feature_extractor = None
+        self.pipe.unet.encoder_hid_proj = None
+        self.pipe.unet.config.encoder_hid_dim_type = None
+        self.pipe.register_to_config(feature_extractor=[None, None])
+
+        attn_procs = {}
+        for name, value in self.pipe.unet.attn_processors.items():
+            attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
+            attn_procs[name] = (
+                attn_processor_class
+                if isinstance(value, IPAdapterAttnProcessor2_0)
+                else value.__class__()
+            )
+        self.pipe.unet.set_attn_processor(attn_procs)
+
+    def _unload(self, kind="", model="", ip_adapter=None, scale=1):
+        to_unload = []
+
+        if self._should_unload_upscaler(scale):
+            to_unload.append("upscaler")
+
+        if self._should_unload_ip_adapter(ip_adapter):
+            self._unload_ip_adapter()
+            to_unload.append("ip_adapter")
+
+        if self._should_unload_pipeline(kind, model):
+            to_unload.append("pipe")
+
+        for component in to_unload:
+            if hasattr(self, component):
+                delattr(self, component)
+
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
+        for component in to_unload:
+            setattr(self, component, None)
 
     def _load_ip_adapter(self, ip_adapter=None):
-        if self.ip_adapter is None and self.ip_adapter != ip_adapter:
+        if self.ip_adapter is None and ip_adapter is not None:
             print(f"Loading IP Adapter: {ip_adapter}...")
             self.pipe.load_ip_adapter(
                 "h94/IP-Adapter",
@@ -76,27 +108,19 @@ class Loader:
             self.pipe.set_ip_adapter_scale(0.5)
             self.ip_adapter = ip_adapter
 
-        if self.ip_adapter is not None and ip_adapter is None:
-            print("Unloading IP Adapter...")
-            if not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
-                self.pipe.image_encoder = None
-                self.pipe.register_to_config(image_encoder=[None, None])
+    def _load_upscaler(self, device=None, scale=1):
+        if scale > 1 and self.upscaler is None:
+            print(f"Loading {scale}x upscaler...")
+            self.upscaler = RealESRGAN(device=device, scale=scale)
+            self.upscaler.load_weights()
 
-            self.pipe.feature_extractor = None
-            self.pipe.unet.encoder_hid_proj = None
-            self.pipe.unet.config.encoder_hid_dim_type = None
-            self.pipe.register_to_config(feature_extractor=[None, None])
-
-            attn_procs = {}
-            for name, value in self.pipe.unet.attn_processors.items():
-                attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
-                attn_procs[name] = (
-                    attn_processor_class
-                    if isinstance(value, IPAdapterAttnProcessor2_0)
-                    else value.__class__()
-                )
-            self.pipe.unet.set_attn_processor(attn_procs)
-            self.pipe.ip_adapter = None
+    def _load_pipeline(self, kind, model, taesd, device, **kwargs):
+        pipeline = PIPELINES[kind]
+        if self.pipe is None:
+            print(f"Loading {model.lower()} with {'Tiny' if taesd else 'KL'} VAE...")
+            self.pipe = pipeline.from_pretrained(model, **kwargs).to(device)
+        if not isinstance(self.pipe, pipeline):
+            self.pipe = pipeline.from_pipe(self.pipe).to(device)
 
     def _load_vae(self, taesd=False, model_name=None, variant=None):
         vae_type = type(self.pipe.vae)
@@ -127,16 +151,29 @@ class Loader:
                 model=model,
             )
 
-    def _load_pipeline(self, kind, model, device, **kwargs):
-        pipelines = {
-            "txt2img": StableDiffusionPipeline,
-            "img2img": StableDiffusionImg2ImgPipeline,
-        }
-        if self.pipe is None:
-            self.pipe = pipelines[kind].from_pretrained(model, **kwargs).to(device)
-        if not isinstance(self.pipe, pipelines[kind]):
-            self.pipe = pipelines[kind].from_pipe(self.pipe).to(device)
-            self.ip_adapter = None
+    def _load_deepcache(self, interval=1):
+        has_deepcache = hasattr(self.pipe, "deepcache")
+        if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
+            return
+        if has_deepcache:
+            self.pipe.deepcache.disable()
+        else:
+            self.pipe.deepcache = DeepCacheSDHelper(pipe=self.pipe)
+        self.pipe.deepcache.set_params(cache_interval=interval)
+        self.pipe.deepcache.enable()
+
+    def _load_freeu(self, freeu=False):
+        # https://github.com/huggingface/diffusers/blob/v0.30.0/src/diffusers/models/unets/unet_2d_condition.py
+        block = self.pipe.unet.up_blocks[0]
+        attrs = ["b1", "b2", "s1", "s2"]
+        has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
+        if has_freeu and not freeu:
+            print("Disabling FreeU...")
+            self.pipe.disable_freeu()
+        elif not has_freeu and freeu:
+            # https://github.com/ChenyangSi/FreeU
+            print("Enabling FreeU...")
+            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
     def load(
         self,
@@ -153,6 +190,7 @@ class Loader:
         dtype,
     ):
         model_lower = model.lower()
+        model_name = self.pipe.config._name_or_path.lower() if self.pipe is not None else ""
 
         schedulers = {
             "DDIM": DDIMScheduler,
@@ -197,33 +235,27 @@ class Loader:
             "variant": variant,
         }
 
-        if self.pipe is None:
-            print(f"Loading {model_lower} with {'Tiny' if taesd else 'KL'} VAE...")
+        self._unload(kind, model, ip_adapter, scale)
+        self._load_pipeline(kind, model, taesd, device, **pipe_kwargs)
 
-        self._load_pipeline(kind, model_lower, device, **pipe_kwargs)
-        model_name = self.pipe.config._name_or_path
-        same_model = model_name.lower() == model_lower
         same_scheduler = isinstance(self.pipe.scheduler, schedulers[scheduler])
         same_karras = (
             not hasattr(self.pipe.scheduler.config, "use_karras_sigmas")
             or self.pipe.scheduler.config.use_karras_sigmas == karras
         )
 
-        if same_model:
+        # same model, different scheduler
+        if model_name == model_lower:
             if not same_scheduler:
                 print(f"Switching to {scheduler}...")
             if not same_karras:
                 print(f"{'Enabling' if karras else 'Disabling'} Karras sigmas...")
             if not same_scheduler or not same_karras:
                 self.pipe.scheduler = schedulers[scheduler](**scheduler_kwargs)
-        else:
-            self.pipe = None
-            self._load_pipeline(kind, model_lower, device, **pipe_kwargs)
 
+        self._load_upscaler(device, scale)
         self._load_ip_adapter(ip_adapter)
         self._load_vae(taesd, model_lower, variant)
         self._load_freeu(freeu)
         self._load_deepcache(deepcache)
-        self._load_upscaler(device, scale)
-        torch.cuda.empty_cache()
         return self.pipe, self.upscaler
