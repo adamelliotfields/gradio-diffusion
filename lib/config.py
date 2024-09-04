@@ -26,17 +26,18 @@ Config = SimpleNamespace(
     },
     MODEL="Lykon/dreamshaper-8",
     MODELS=[
+        "Comfy-Org/stable-diffusion-v1-5-archive",
         "cyberdelia/CyberRealistic",
         "fluently/Fluently-v4",
         "Linaqruf/anything-v3-1",
         "Lykon/dreamshaper-8",
         "prompthero/openjourney-v4",
-        "runwayml/stable-diffusion-v1-5",
         "SG161222/Realistic_Vision_V5.1_noVAE",
         "XpucT/Deliberate",
     ],
     MODEL_CHECKPOINTS={
         # keep keys lowercase
+        "comfy-org/stable-diffusion-v1-5-archive": "v1-5-pruned-emaonly-fp16.safetensors",
         "cyberdelia/cyberrealistic": "CyberRealistic_V5_FP16.safetensors",
         "fluently/fluently-v4": "Fluently-v4.safetensors",
         "linaqruf/anything-v3-1": "anything-v3-2.safetensors",

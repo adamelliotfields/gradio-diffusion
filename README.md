@@ -15,19 +15,22 @@ header: mini
 license: apache-2.0
 models:
 - ai-forever/Real-ESRGAN
+- Comfy-Org/stable-diffusion-v1-5-archive
 - cyberdelia/CyberRealistic
 - fluently/Fluently-v4
 - h94/IP-Adapter
 - Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
 - prompthero/openjourney-v4
-- runwayml/stable-diffusion-v1-5
 - SG161222/Realistic_Vision_V5.1_noVAE
 - XpucT/Deliberate
 preload_from_hub:
 - >-
   ai-forever/Real-ESRGAN
   RealESRGAN_x2.pth,RealESRGAN_x4.pth
+- >-
+  Comfy-Org/stable-diffusion-v1-5-archive
+  v1-5-pruned-emaonly-fp16.safetensors
 - >-
   cyberdelia/CyberRealistic
   CyberRealistic_V5_FP16.safetensors
@@ -42,13 +45,10 @@ preload_from_hub:
   anything-v3-2.safetensors
 - >-
   Lykon/dreamshaper-8
-  text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
+  text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
 - >-
   prompthero/openjourney-v4
   openjourney-v4.ckpt
-- >-
-  runwayml/stable-diffusion-v1-5
-  text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
 - >-
   SG161222/Realistic_Vision_V5.1_noVAE
   Realistic_Vision_V5.1_fp16-no-ema.safetensors

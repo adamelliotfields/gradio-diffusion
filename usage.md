@@ -30,12 +30,12 @@ Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) fro
 
 Each model checkpoint has a different aesthetic:
 
+* [Comfy-Org/stable-diffusion-v1-5](https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive): base
 * [cyberdelia/CyberRealistic_v5](https://huggingface.co/cyberdelia/CyberRealistic): photorealistic
 * [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8): general purpose (default)
 * [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4): general purpose
 * [Linaqruf/anything-v3-1](https://huggingface.co/Linaqruf/anything-v3-1): anime
 * [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4): Midjourney-like
-* [runwayml/stable-diffusion-v1-5](https://huggingface.co/runwayml/stable-diffusion-v1-5): base
 * [SG161222/Realistic_Vision_v5.1](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE): photorealistic
 * [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate): general purpose
 
