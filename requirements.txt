@@ -6,6 +6,7 @@ deepcache==0.1.1
 diffusers==0.30.2
 hf-transfer
 gradio==4.41.0
+numpy==1.26.4
 ruff==0.5.7
 spaces
 torch==2.2.0
