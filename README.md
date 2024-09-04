@@ -15,6 +15,7 @@ header: mini
 license: apache-2.0
 models:
 - ai-forever/Real-ESRGAN
+- cyberdelia/CyberRealistic
 - fluently/Fluently-v4
 - h94/IP-Adapter
 - Linaqruf/anything-v3-1
@@ -22,31 +23,38 @@ models:
 - prompthero/openjourney-v4
 - runwayml/stable-diffusion-v1-5
 - SG161222/Realistic_Vision_V5.1_noVAE
+- XpucT/Deliberate
 preload_from_hub:
 - >-
   ai-forever/Real-ESRGAN
   RealESRGAN_x2.pth,RealESRGAN_x4.pth
 - >-
+  cyberdelia/CyberRealistic
+  CyberRealistic_V5_FP16.safetensors
+- >-
   fluently/Fluently-v4
-  text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
+  Fluently-v4.safetensors
 - >-
   h94/IP-Adapter
   models/ip-adapter-full-face_sd15.safetensors,models/ip-adapter-plus_sd15.safetensors,models/image_encoder/model.safetensors
 - >-
   Linaqruf/anything-v3-1
-  text_encoder/model.safetensors,unet/diffusion_pytorch_model.safetensors,vae/diffusion_pytorch_model.safetensors
+  anything-v3-2.safetensors
 - >-
   Lykon/dreamshaper-8
   text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
 - >-
   prompthero/openjourney-v4
-  text_encoder/model.safetensors,unet/diffusion_pytorch_model.safetensors,vae/diffusion_pytorch_model.safetensors
+  openjourney-v4.ckpt
 - >-
   runwayml/stable-diffusion-v1-5
   text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors
 - >-
   SG161222/Realistic_Vision_V5.1_noVAE
-  text_encoder/model.safetensors,unet/diffusion_pytorch_model.safetensors,vae/diffusion_pytorch_model.safetensors
+  Realistic_Vision_V5.1_fp16-no-ema.safetensors
+- >-
+  XpucT/Deliberate
+  Deliberate_v6.safetensors
 ---
 
 # diffusion
@@ -84,4 +92,17 @@ python app.py --port 7860
 
 # cli
 python cli.py 'an astronaut riding a horse on mars'
+```
+
+## Development
+
+See [pull requests and discussions](https://huggingface.co/docs/hub/en/repositories-pull-requests-discussions).
+
+```sh
+git fetch origin refs/pr/42:pr/42
+git checkout pr/42
+# ...
+git add .
+git commit -m "Commit message"
+git push origin pr/42:refs/pr/42
 ```

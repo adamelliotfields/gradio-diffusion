@@ -144,7 +144,7 @@ with gr.Blocks(
                             min_width=240,
                         )
                         scheduler = gr.Dropdown(
-                            choices=Config.SCHEDULERS,
+                            choices=Config.SCHEDULERS.keys(),
                             value=Config.SCHEDULER,
                             elem_id="scheduler",
                             label="Scheduler",
@@ -246,23 +246,6 @@ with gr.Blocks(
                         )
 
                     with gr.Row():
-                        increment_seed = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Autoincrement",
-                            value=True,
-                        )
-                        use_freeu = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="FreeU",
-                            value=False,
-                        )
-                        use_clip_skip = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Clip skip",
-                            value=False,
-                        )
-
-                    with gr.Row():
                         use_karras = gr.Checkbox(
                             elem_classes=["checkbox"],
                             label="Karras σ",
@@ -273,9 +256,14 @@ with gr.Blocks(
                             label="Tiny VAE",
                             value=False,
                         )
-                        truncate_prompts = gr.Checkbox(
+                        use_freeu = gr.Checkbox(
                             elem_classes=["checkbox"],
-                            label="Truncate prompts",
+                            label="FreeU",
+                            value=False,
+                        )
+                        use_clip_skip = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="Clip skip",
                             value=False,
                         )
 
@@ -468,15 +456,13 @@ with gr.Blocks(
             guidance_scale,
             inference_steps,
             denoising_strength,
+            deepcache_interval,
+            scale,
             num_images,
             use_karras,
             use_taesd,
             use_freeu,
             use_clip_skip,
-            truncate_prompts,
-            increment_seed,
-            deepcache_interval,
-            scale,
         ],
     )
 

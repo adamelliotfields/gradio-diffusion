@@ -36,10 +36,8 @@ async def main():
     parser.add_argument("--ip-face", action="store_true")
     parser.add_argument("--taesd", action="store_true")
     parser.add_argument("--clip-skip", action="store_true")
-    parser.add_argument("--truncate", action="store_true")
     parser.add_argument("--karras", action="store_true")
     parser.add_argument("--freeu", action="store_true")
-    parser.add_argument("--no-increment", action="store_false")
     # fmt: on
 
     args = parser.parse_args()
@@ -60,15 +58,13 @@ async def main():
         args.guidance,
         args.steps,
         args.strength,
+        args.deepcache,
+        args.scale,
         args.images,
         args.karras,
         args.taesd,
         args.freeu,
         args.clip_skip,
-        args.truncate,
-        args.no_increment,
-        args.deepcache,
-        args.scale,
     )
     await async_call(save_images, images, args.filename)
 
