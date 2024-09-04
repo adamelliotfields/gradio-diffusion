@@ -34,7 +34,7 @@
 }
 .gallery, .gallery .grid-wrap {
   height: calc(100vh - 360px);
-  max-height: none;
+  max-height: calc(100vh - 360px);
 }
 
 .icon-button {
