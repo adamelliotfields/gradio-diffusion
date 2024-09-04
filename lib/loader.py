@@ -132,8 +132,7 @@ class Loader:
         if not isinstance(self.pipe, pipeline):
             self.pipe = pipeline.from_pipe(self.pipe).to(device)
 
-        if not tqdm:
-            self.pipe.set_progress_bar_config(disable=True)
+        self.pipe.set_progress_bar_config(disable=not tqdm)
 
     def _load_vae(self, taesd=False, model=""):
         vae_type = type(self.pipe.vae)
@@ -236,13 +235,12 @@ class Loader:
             pipe_kwargs["variant"] = None
 
         # convert fp32 to bf16/fp16
-        if (
-            model.lower() in ["linaqruf/anything-v3-1"]
-            and torch.cuda.get_device_properties(device).major >= 8
-        ):
-            pipe_kwargs["torch_dtype"] = torch.bfloat16
-        else:
-            pipe_kwargs["torch_dtype"] = torch.float16
+        if model.lower() in ["linaqruf/anything-v3-1"]:
+            pipe_kwargs["torch_dtype"] = (
+                torch.bfloat16
+                if torch.cuda.get_device_properties(device).major >= 8
+                else torch.float16
+            )
 
         self._unload(kind, model, ip_adapter, scale)
         self._load_pipeline(kind, model, tqdm, device, **pipe_kwargs)
