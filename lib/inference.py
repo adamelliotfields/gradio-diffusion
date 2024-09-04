@@ -9,7 +9,6 @@ from itertools import product
 from typing import Callable, TypeVar
 
 import anyio
-import gradio as gr
 import numpy as np
 import spaces
 import torch
@@ -123,7 +122,7 @@ def generate(
     clip_skip=False,
     Info: Callable[[str], None] = None,
     Error=Exception,
-    progress=gr.Progress(),
+    progress=None,
 ):
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
@@ -150,10 +149,15 @@ def generate(
         IP_ADAPTER = ""
 
     if progress is not None:
+        TQDM = False
         progress((0, inference_steps), desc=f"Generating image {CURRENT_IMAGE}/{num_images}")
+    else:
+        TQDM = True
 
     def callback_on_step_end(pipeline, step, timestep, latents):
         nonlocal CURRENT_IMAGE
+        if progress is None:
+            return latents
         strength = denoising_strength if KIND == "img2img" else 1
         total_steps = min(int(inference_steps * strength), inference_steps)
         current_step = step + 1
@@ -177,6 +181,7 @@ def generate(
         freeu,
         deepcache,
         scale,
+        TQDM,
         DEVICE,
     )
 

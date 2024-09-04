@@ -110,7 +110,7 @@ class Loader:
             self.upscaler = RealESRGAN(device=device, scale=scale)
             self.upscaler.load_weights()
 
-    def _load_pipeline(self, kind, model, device, **kwargs):
+    def _load_pipeline(self, kind, model, tqdm, device, **kwargs):
         pipeline = Config.PIPELINES[kind]
         if self.pipe is None:
             print(f"Loading {model}...")
@@ -131,7 +131,9 @@ class Loader:
 
         if not isinstance(self.pipe, pipeline):
             self.pipe = pipeline.from_pipe(self.pipe).to(device)
-        self.pipe.set_progress_bar_config(disable=True)
+
+        if not tqdm:
+            self.pipe.set_progress_bar_config(disable=True)
 
     def _load_vae(self, taesd=False, model=""):
         vae_type = type(self.pipe.vae)
@@ -202,6 +204,7 @@ class Loader:
         freeu,
         deepcache,
         scale,
+        tqdm,
         device,
     ):
         scheduler_kwargs = {
@@ -242,7 +245,7 @@ class Loader:
             pipe_kwargs["torch_dtype"] = torch.float16
 
         self._unload(kind, model, ip_adapter, scale)
-        self._load_pipeline(kind, model, device, **pipe_kwargs)
+        self._load_pipeline(kind, model, tqdm, device, **pipe_kwargs)
 
         # error loading model
         if self.pipe is None:

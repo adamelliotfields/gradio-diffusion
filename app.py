@@ -87,7 +87,13 @@ async def generate_fn(*args):
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
     try:
-        images = await async_call(generate, *args, Info=gr.Info, Error=gr.Error)
+        images = await async_call(
+            generate,
+            *args,
+            Info=gr.Info,
+            Error=gr.Error,
+            progress=gr.Progress(),
+        )
     except RuntimeError:
         raise gr.Error("RuntimeError: Please try again")
     return images
