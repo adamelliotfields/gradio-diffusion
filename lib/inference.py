@@ -9,6 +9,7 @@ from itertools import product
 from typing import Callable, TypeVar
 
 import anyio
+import gradio as gr
 import numpy as np
 import spaces
 import torch
@@ -113,17 +114,16 @@ def generate(
     guidance_scale=7.5,
     inference_steps=50,
     denoising_strength=0.8,
+    deepcache=1,
+    scale=1,
     num_images=1,
     karras=False,
     taesd=False,
     freeu=False,
     clip_skip=False,
-    truncate_prompts=False,
-    increment_seed=True,
-    deepcache=1,
-    scale=1,
     Info: Callable[[str], None] = None,
     Error=Exception,
+    progress=gr.Progress(),
 ):
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
@@ -134,12 +134,6 @@ def generate(
 
     DEVICE = torch.device("cuda")
 
-    DTYPE = (
-        torch.bfloat16
-        if torch.cuda.is_available() and torch.cuda.get_device_properties(DEVICE).major >= 8
-        else torch.float16
-    )
-
     EMBEDDINGS_TYPE = (
         ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
         if clip_skip
@@ -148,114 +142,135 @@ def generate(
 
     KIND = "img2img" if image_prompt is not None else "txt2img"
 
-    IP_ADAPTER = None
+    CURRENT_IMAGE = 1
 
     if ip_image:
         IP_ADAPTER = "full-face" if ip_face else "plus"
+    else:
+        IP_ADAPTER = ""
 
-    with torch.inference_mode():
-        start = time.perf_counter()
-        loader = Loader()
-        pipe, upscaler = loader.load(
-            KIND,
-            IP_ADAPTER,
-            model,
-            scheduler,
-            karras,
-            taesd,
-            freeu,
-            deepcache,
-            scale,
-            DEVICE,
-            DTYPE,
+    if progress is not None:
+        progress((0, inference_steps), desc=f"Generating image {CURRENT_IMAGE}/{num_images}")
+
+    def callback_on_step_end(pipeline, step, timestep, latents):
+        nonlocal CURRENT_IMAGE
+        strength = denoising_strength if KIND == "img2img" else 1
+        total_steps = min(int(inference_steps * strength), inference_steps)
+        current_step = step + 1
+        progress(
+            (current_step, total_steps),
+            desc=f"Generating image {CURRENT_IMAGE}/{num_images}",
         )
+        if current_step == total_steps:
+            CURRENT_IMAGE += 1
+        return latents
 
-        # load embeddings and append to negative prompt
-        embeddings_dir = os.path.join(os.path.dirname(__file__), "..", "embeddings")
-        embeddings_dir = os.path.abspath(embeddings_dir)
-        for embedding in embeddings:
-            try:
-                pipe.load_textual_inversion(
-                    pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
-                    token=f"<{embedding}>",
-                )
-                negative_prompt = (
-                    f"{negative_prompt}, (<{embedding}>)1.1"
-                    if negative_prompt
-                    else f"(<{embedding}>)1.1"
-                )
-            except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
-                raise Error(f"Invalid embedding: <{embedding}>")
+    start = time.perf_counter()
+    loader = Loader()
+    pipe, upscaler = loader.load(
+        KIND,
+        IP_ADAPTER,
+        model,
+        scheduler,
+        karras,
+        taesd,
+        freeu,
+        deepcache,
+        scale,
+        DEVICE,
+    )
 
-        # prompt embeds
-        compel = Compel(
-            device=pipe.device,
-            tokenizer=pipe.tokenizer,
-            text_encoder=pipe.text_encoder,
-            truncate_long_prompts=truncate_prompts,
-            dtype_for_device_getter=lambda _: DTYPE,
-            returned_embeddings_type=EMBEDDINGS_TYPE,
-            textual_inversion_manager=DiffusersTextualInversionManager(pipe),
-        )
+    # load embeddings and append to negative prompt
+    embeddings_dir = os.path.join(os.path.dirname(__file__), "..", "embeddings")
+    embeddings_dir = os.path.abspath(embeddings_dir)
+    for embedding in embeddings:
+        try:
+            # wrap embeddings in angle brackets
+            pipe.load_textual_inversion(
+                pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
+                token=f"<{embedding}>",
+            )
+            # boost embeddings slightly
+            negative_prompt = (
+                f"{negative_prompt}, (<{embedding}>)1.1"
+                if negative_prompt
+                else f"(<{embedding}>)1.1"
+            )
+        except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
+            raise Error(f"Invalid embedding: <{embedding}>")
 
-        images = []
-        current_seed = seed
+    # prompt embeds
+    compel = Compel(
+        device=pipe.device,
+        tokenizer=pipe.tokenizer,
+        text_encoder=pipe.text_encoder,
+        returned_embeddings_type=EMBEDDINGS_TYPE,
+        dtype_for_device_getter=lambda _: pipe.dtype,
+        textual_inversion_manager=DiffusersTextualInversionManager(pipe),
+    )
+
+    images = []
+    current_seed = seed
+
+    try:
+        styled_negative_prompt = apply_style(negative_prompt, style, negative=True)
+        neg_embeds = compel(styled_negative_prompt)
+    except PromptParser.ParsingException:
+        raise Error("ParsingException: Invalid negative prompt")
+
+    for i in range(num_images):
+        # seeded generator for each iteration
+        generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
 
         try:
-            styled_negative_prompt = apply_style(negative_prompt, style, negative=True)
-            neg_embeds = compel(styled_negative_prompt)
+            all_positive_prompts = parse_prompt(positive_prompt)
+            prompt_index = i % len(all_positive_prompts)
+            pos_prompt = all_positive_prompts[prompt_index]
+            styled_pos_prompt = apply_style(pos_prompt, style)
+            pos_embeds = compel(styled_pos_prompt)
+            pos_embeds, neg_embeds = compel.pad_conditioning_tensors_to_same_length(
+                [pos_embeds, neg_embeds]
+            )
         except PromptParser.ParsingException:
-            raise Error("ParsingException: Invalid negative prompt")
+            raise Error("ParsingException: Invalid prompt")
 
-        for i in range(num_images):
-            # seeded generator for each iteration
-            generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
+        kwargs = {
+            "width": width,
+            "height": height,
+            "generator": generator,
+            "prompt_embeds": pos_embeds,
+            "guidance_scale": guidance_scale,
+            "negative_prompt_embeds": neg_embeds,
+            "num_inference_steps": inference_steps,
+            "output_type": "np" if scale > 1 else "pil",
+        }
 
-            try:
-                all_positive_prompts = parse_prompt(positive_prompt)
-                prompt_index = i % len(all_positive_prompts)
-                pos_prompt = all_positive_prompts[prompt_index]
-                styled_pos_prompt = apply_style(pos_prompt, style)
-                pos_embeds = compel(styled_pos_prompt)
-                pos_embeds, neg_embeds = compel.pad_conditioning_tensors_to_same_length(
-                    [pos_embeds, neg_embeds]
-                )
-            except PromptParser.ParsingException:
-                raise Error("ParsingException: Invalid prompt")
+        if progress is not None:
+            kwargs["callback_on_step_end"] = callback_on_step_end
 
-            kwargs = {
-                "width": width,
-                "height": height,
-                "generator": generator,
-                "prompt_embeds": pos_embeds,
-                "guidance_scale": guidance_scale,
-                "negative_prompt_embeds": neg_embeds,
-                "num_inference_steps": inference_steps,
-                "output_type": "np" if scale > 1 else "pil",
-            }
+        if KIND == "img2img":
+            kwargs["strength"] = denoising_strength
+            kwargs["image"] = prepare_image(image_prompt, (width, height))
 
-            if KIND == "img2img":
-                kwargs["strength"] = denoising_strength
-                kwargs["image"] = prepare_image(image_prompt, (width, height))
+        if IP_ADAPTER:
+            # don't resize full-face images
+            size = None if ip_face else (width, height)
+            kwargs["ip_adapter_image"] = prepare_image(ip_image, size)
 
-            if IP_ADAPTER:
-                # don't resize full-face images
-                size = None if ip_face else (width, height)
-                kwargs["ip_adapter_image"] = prepare_image(ip_image, size)
+        try:
+            image = pipe(**kwargs).images[0]
+            if scale > 1:
+                image = upscaler.predict(image)
+            images.append((image, str(current_seed)))
+        finally:
+            pipe.unload_textual_inversion()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
-            try:
-                image = pipe(**kwargs).images[0]
-                if scale > 1:
-                    image = upscaler.predict(image)
-                images.append((image, str(current_seed)))
-            finally:
-                pipe.unload_textual_inversion()
-                torch.cuda.empty_cache()
+        # increment seed for next image
+        current_seed += 1
 
-            if increment_seed:
-                current_seed += 1
-
-        diff = time.perf_counter() - start
-        if Info:
-            Info(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
-        return images
+    diff = time.perf_counter() - start
+    if Info:
+        Info(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
+    return images
