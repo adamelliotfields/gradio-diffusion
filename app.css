@@ -29,18 +29,12 @@
 .gallery:is(.dark *) {
   background-color: var(--bg-dark);
 }
-.gallery > .grid-wrap {
+.gallery .grid-wrap {
   overflow-y: auto;
 }
-.gallery, .gallery > .grid-wrap {
-  height: 100%;
-  max-height: 550px;
-}
-@media (min-width: 640px) {
-  .gallery, .gallery > .grid-wrap {
-    height: 550px;
-    max-height: none;
-  }
+.gallery, .gallery .grid-wrap {
+  height: calc(100vh - 360px);
+  max-height: none;
 }
 
 .icon-button {
@@ -48,7 +42,7 @@
 }
 
 .image-container {
-  max-height: 438px;
+  max-height: calc(100vh - 480px);
 }
 
 .popover {
@@ -113,7 +107,7 @@
   border-width: 0px;
 }
 .tabitem {
-  max-height: 656px;
+  max-height: calc(100vh - 260px);
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0 0 8px;
