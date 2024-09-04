@@ -56,7 +56,7 @@ Config = SimpleNamespace(
     },
     EMBEDDING="fast_negative",
     EMBEDDINGS=[
-        "bad_dream",
+        "cyberrealistic_negative",
         "fast_negative",
         "unrealistic_dream",
     ],

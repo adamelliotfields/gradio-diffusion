@@ -12,11 +12,11 @@ Arrays allow you to generate different images from a single prompt. For example,
 
 ### Embeddings
 
-Select multiple negative [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings. Fast Negative and Bad Dream can be used standalone or together; Unrealistic Dream should be combined with one of the others:
+Select multiple negative [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
 
-* [`<fast_negative>`](https://civitai.com/models/71961/fast-negative-embedding-fastnegativev2): all-purpose (default)
-* [`<bad_dream>`](https://civitai.com/models/72437?modelVersionId=77169): DreamShaper-style
+* [`<fast_negative>`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
 * [`<unrealistic_dream>`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on
+* [`<cyberrealistic_negative>`](https://civitai.com/models/77976?modelVersionId=82745): alternative realistic add-on
 
 ### Styles
 
