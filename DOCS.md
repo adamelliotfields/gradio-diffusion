@@ -1,6 +1,6 @@
-## Usage
+## Documentation
 
-Enter a prompt and click `Generate`. Roll the `🎲` for a random prompt.
+TL;DR: Enter a prompt or roll the `🎲` and press `Generate`.
 
 ### Prompting
 
