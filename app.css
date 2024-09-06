@@ -34,7 +34,7 @@
 }
 .gallery, .gallery .grid-wrap {
   height: calc(100vh - 360px);
-  max-height: calc(100vh - 360px);
+  max-height: none;
 }
 
 .icon-button {
@@ -43,35 +43,6 @@
 
 .image-container {
   max-height: calc(100vh - 480px);
-}
-
-.popover {
-  position: relative;
-}
-.popover:hover::after {
-  white-space: nowrap;
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border-width: 1px;
-  border-color: var(--button-secondary-border-color-hover);
-  background: var(--button-secondary-background-fill-hover);
-  color: var(--button-secondary-text-color-hover);
-  font-weight: var(--section-header-text-weight);
-  font-size: var(--section-header-text-size);
-}
-.popover#random:hover::after {
-  content: 'Random prompt';
-}
-.popover#clear:hover::after {
-  content: 'Clear gallery';
-}
-.popover#refresh:hover::after {
-  /* see config.py for default seed */
-  content: var(--seed, "-1");
 }
 
 #intro {
@@ -99,8 +70,51 @@
 #intro > div > svg:is(.dark *) {
   fill: #10b981 !important;
 }
-@keyframes spin {
-  100% { transform: rotate(360deg); }
+#intro nav {
+  display: flex;
+  column-gap: 0.5rem;
+}
+#intro nav a, #intro nav span {
+  white-space: nowrap;
+  font-family: monospace;
+}
+#intro nav span {
+  font-weight: 500;
+  color: var(--body-text-color);
+}
+#intro nav a {
+  color: var(--body-text-color-subdued);
+}
+#intro nav a:hover {
+  color: var(--body-text-color);
+}
+
+.popover {
+  position: relative;
+}
+.popover:hover::after {
+  white-space: nowrap;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-width: 1px;
+  border-color: var(--button-secondary-border-color-hover);
+  background: var(--button-secondary-background-fill-hover);
+  color: var(--button-secondary-text-color-hover);
+  font-weight: var(--section-header-text-weight);
+  font-size: var(--section-header-text-size);
+}
+.popover#random:hover::after {
+  content: 'Random prompt';
+}
+.popover#clear:hover::after {
+  content: 'Clear gallery';
+}
+.popover#refresh:hover::after {
+  content: var(--seed, "-1");
 }
 
 .tabs, .tabitem, .tab-nav, .tab-nav > .selected {
@@ -117,4 +131,8 @@
 }
 .tab-nav > button {
   padding-bottom: 8px;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }

@@ -128,7 +128,7 @@ with gr.Blocks(
     with gr.Accordion(
         elem_classes=["accordion"],
         elem_id="menu",
-        label="Show menu",
+        label="Menu",
         open=False,
     ):
         with gr.Tabs():
@@ -324,28 +324,26 @@ with gr.Blocks(
                             value=False,
                         )
 
-            with gr.TabItem("ℹ️ Usage"):
-                gr.Markdown(read_file("usage.md"), elem_classes=["markdown"])
-
     # Main content
     with gr.Column(elem_id="content"):
         with gr.Group():
             output_images = gr.Gallery(
                 elem_classes=["gallery"],
                 show_share_button=False,
+                object_fit="cover",
                 interactive=False,
                 show_label=False,
-                object_fit="cover",
                 label="Output",
                 format="png",
                 columns=2,
             )
             prompt = gr.Textbox(
                 placeholder="corgi, beach, 8k",
+                autoscroll=False,
                 show_label=False,
                 label="Prompt",
-                value=None,
-                lines=2,
+                max_lines=3,
+                lines=3,
             )
 
         # Buttons
