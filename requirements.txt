@@ -12,3 +12,6 @@ spaces
 torch==2.2.0
 torchvision==0.17.0
 transformers==4.43.4
+# TODO: unpin once fixed upstream
+# https://github.com/gradio-app/gradio/issues/9278
+fastapi==0.112.2
