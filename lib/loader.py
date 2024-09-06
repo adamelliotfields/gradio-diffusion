@@ -1,4 +1,5 @@
 import gc
+from threading import Lock
 
 import torch
 from DeepCache import DeepCacheSDHelper
@@ -17,14 +18,16 @@ __import__("diffusers").logging.set_verbosity_error()
 
 class Loader:
     _instance = None
+    _lock = Lock()
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(Loader, cls).__new__(cls)
-            cls._instance.pipe = None
-            cls._instance.model = None
-            cls._instance.upscaler = None
-            cls._instance.ip_adapter = None
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance.pipe = None
+                cls._instance.model = None
+                cls._instance.upscaler = None
+                cls._instance.ip_adapter = None
         return cls._instance
 
     def _should_unload_upscaler(self, scale=1):

@@ -96,7 +96,16 @@ def prepare_image(input, size=None):
         raise ValueError("Invalid image prompt")
 
 
-@spaces.GPU(duration=40)
+def gpu_duration(**kwargs):
+    duration = 15
+    scale = kwargs.get("scale", 1)
+    num_images = kwargs.get("num_images", 1)
+    if scale == 4:
+        duration += 5
+    return duration * num_images
+
+
+@spaces.GPU(duration=gpu_duration)
 def generate(
     positive_prompt,
     negative_prompt="",
