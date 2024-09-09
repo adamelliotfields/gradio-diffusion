@@ -21,8 +21,8 @@ from typing_extensions import ParamSpec
 
 from .loader import Loader
 
-__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
 __import__("transformers").logging.set_verbosity_error()
+__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -140,8 +140,6 @@ def generate(
     if seed is None or seed < 0:
         seed = int(datetime.now().timestamp() * 1_000_000) % (2**64)
 
-    DEVICE = torch.device("cuda")
-
     EMBEDDINGS_TYPE = (
         ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
         if clip_skip
@@ -191,7 +189,6 @@ def generate(
         deepcache,
         scale,
         TQDM,
-        DEVICE,
     )
 
     # load embeddings and append to negative prompt

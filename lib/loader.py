@@ -1,5 +1,6 @@
 import gc
 from threading import Lock
+from warnings import filterwarnings
 
 import torch
 from DeepCache import DeepCacheSDHelper
@@ -11,9 +12,9 @@ from torch._dynamo import OptimizedModule
 from .config import Config
 from .upscaler import RealESRGAN
 
-__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="diffusers")
-__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="torch")
 __import__("diffusers").logging.set_verbosity_error()
+filterwarnings("ignore", category=FutureWarning, module="torch")
+filterwarnings("ignore", category=FutureWarning, module="diffusers")
 
 
 class Loader:
@@ -69,6 +70,14 @@ class Loader:
             )
         self.pipe.unet.set_attn_processor(attn_procs)
 
+    def _flush(self):
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        torch.cuda.reset_max_memory_allocated()
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.synchronize()
+
     def _unload(self, kind="", model="", ip_adapter="", scale=1):
         to_unload = []
 
@@ -86,11 +95,7 @@ class Loader:
         for component in to_unload:
             delattr(self, component)
 
-        gc.collect()
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-        torch.cuda.reset_max_memory_allocated()
-        torch.cuda.reset_peak_memory_stats()
+        self._flush()
 
         for component in to_unload:
             setattr(self, component, None)
@@ -107,10 +112,10 @@ class Loader:
             self.pipe.set_ip_adapter_scale(0.5)
             self.ip_adapter = ip_adapter
 
-    def _load_upscaler(self, device=None, scale=1):
+    def _load_upscaler(self, scale=1, device=None):
         if scale > 1 and self.upscaler is None:
             print(f"Loading {scale}x upscaler...")
-            self.upscaler = RealESRGAN(device=device, scale=scale)
+            self.upscaler = RealESRGAN(scale, device)
             self.upscaler.load_weights()
 
     def _load_pipeline(self, kind, model, tqdm, device, **kwargs):
@@ -207,8 +212,9 @@ class Loader:
         deepcache,
         scale,
         tqdm,
-        device,
     ):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         scheduler_kwargs = {
             "beta_schedule": "scaled_linear",
             "timestep_spacing": "leading",
@@ -237,20 +243,22 @@ class Loader:
         else:
             pipe_kwargs["variant"] = None
 
-        # convert fp32 to bf16/fp16
+        # convert fp32 to bf16 if possible
         if model.lower() in ["linaqruf/anything-v3-1"]:
             pipe_kwargs["torch_dtype"] = (
                 torch.bfloat16
                 if torch.cuda.get_device_properties(device).major >= 8
                 else torch.float16
             )
+        else:
+            pipe_kwargs["torch_dtype"] = torch.float16
 
         self._unload(kind, model, ip_adapter, scale)
         self._load_pipeline(kind, model, tqdm, device, **pipe_kwargs)
 
         # error loading model
         if self.pipe is None:
-            return self.pipe, self.upscaler
+            return None, None
 
         same_scheduler = isinstance(self.pipe.scheduler, Config.SCHEDULERS[scheduler])
         same_karras = (
@@ -267,9 +275,9 @@ class Loader:
             if not same_scheduler or not same_karras:
                 self.pipe.scheduler = Config.SCHEDULERS[scheduler](**scheduler_kwargs)
 
-        self._load_upscaler(device, scale)
-        self._load_ip_adapter(ip_adapter)
-        self._load_vae(taesd, model)
         self._load_freeu(freeu)
+        self._load_vae(taesd, model)
         self._load_deepcache(deepcache)
+        self._load_ip_adapter(ip_adapter)
+        self._load_upscaler(scale, device)
         return self.pipe, self.upscaler
