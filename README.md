@@ -21,7 +21,6 @@ models:
 - h94/IP-Adapter
 - Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
-- madebyollin/taesd
 - prompthero/openjourney-v4
 - SG161222/Realistic_Vision_V5.1_noVAE
 - XpucT/Deliberate
@@ -71,7 +70,7 @@ Gradio app for Stable Diffusion 1.5 featuring:
 * Real-ESRGAN upscaling
 * Optional tiny autoencoder
 
-There's also a [CLI](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/cli.py). SDXL and Flux coming very soon! 🤩
+There's also a [CLI](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/cli.py).
 
 ## Motivation
 
