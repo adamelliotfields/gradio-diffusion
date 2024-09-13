@@ -27,12 +27,10 @@ class Loader:
                 cls._instance = super().__new__(cls)
                 cls._instance.pipe = None
                 cls._instance.model = None
-                cls._instance.upscaler = None
                 cls._instance.ip_adapter = None
+                cls._instance.upscaler_2x = None
+                cls._instance.upscaler_4x = None
         return cls._instance
-
-    def _should_unload_upscaler(self, scale=1):
-        return self.upscaler is not None and scale == 1
 
     def _should_unload_ip_adapter(self, ip_adapter=""):
         return self.ip_adapter is not None and not ip_adapter
@@ -78,25 +76,17 @@ class Loader:
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.synchronize()
 
-    def _unload(self, kind="", model="", ip_adapter="", scale=1):
+    def _unload(self, kind="", model="", ip_adapter=""):
         to_unload = []
-
-        if self._should_unload_upscaler(scale):
-            to_unload.append("upscaler")
-
         if self._should_unload_ip_adapter(ip_adapter):
             self._unload_ip_adapter()
             to_unload.append("ip_adapter")
-
         if self._should_unload_pipeline(kind, model):
             to_unload.append("model")
             to_unload.append("pipe")
-
         for component in to_unload:
             delattr(self, component)
-
         self._flush()
-
         for component in to_unload:
             setattr(self, component, None)
 
@@ -112,35 +102,46 @@ class Loader:
             self.pipe.set_ip_adapter_scale(0.5)
             self.ip_adapter = ip_adapter
 
-    def _load_upscaler(self, scale=1, device=None):
-        if scale > 1 and self.upscaler is None:
-            print(f"Loading {scale}x upscaler...")
-            self.upscaler = RealESRGAN(scale, device)
-            self.upscaler.load_weights()
+    def _load_upscaler(self, scale=1):
+        if scale == 2 and self.upscaler_2x is None:
+            try:
+                print("Loading 2x upscaler...")
+                self.upscaler_2x = RealESRGAN(2, "cuda")
+                self.upscaler_2x.load_weights()
+            except Exception as e:
+                print(f"Error loading 2x upscaler: {e}")
+                self.upscaler_2x = None
+        if scale == 4 and self.upscaler_4x is None:
+            try:
+                print("Loading 4x upscaler...")
+                self.upscaler_4x = RealESRGAN(4, "cuda")
+                self.upscaler_4x.load_weights()
+            except Exception as e:
+                print(f"Error loading 4x upscaler: {e}")
+                self.upscaler_4x = None
 
-    def _load_pipeline(self, kind, model, tqdm, device, **kwargs):
+    def _load_pipeline(self, kind, model, tqdm, **kwargs):
         pipeline = Config.PIPELINES[kind]
         if self.pipe is None:
-            print(f"Loading {model}...")
             try:
+                print(f"Loading {model}...")
+                self.model = model
                 if model.lower() in Config.MODEL_CHECKPOINTS.keys():
                     self.pipe = pipeline.from_single_file(
                         f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
                         **kwargs,
-                    ).to(device)
+                    ).to("cuda")
                 else:
-                    self.pipe = pipeline.from_pretrained(model, **kwargs).to(device)
-                self.model = model
+                    self.pipe = pipeline.from_pretrained(model, **kwargs).to("cuda")
             except Exception as e:
                 print(f"Error loading {model}: {e}")
                 self.model = None
                 self.pipe = None
                 return
-
         if not isinstance(self.pipe, pipeline):
-            self.pipe = pipeline.from_pipe(self.pipe).to(device)
-
-        self.pipe.set_progress_bar_config(disable=not tqdm)
+            self.pipe = pipeline.from_pipe(self.pipe).to("cuda")
+        if self.pipe is not None:
+            self.pipe.set_progress_bar_config(disable=not tqdm)
 
     def _load_vae(self, taesd=False, model=""):
         vae_type = type(self.pipe.vae)
@@ -251,14 +252,15 @@ class Loader:
                 else torch.float16
             )
         else:
+            # defaults to float32
             pipe_kwargs["torch_dtype"] = torch.float16
 
-        self._unload(kind, model, ip_adapter, scale)
-        self._load_pipeline(kind, model, tqdm, device, **pipe_kwargs)
+        self._unload(kind, model, ip_adapter)
+        self._load_pipeline(kind, model, tqdm, **pipe_kwargs)
 
         # error loading model
         if self.pipe is None:
-            return None, None
+            return
 
         same_scheduler = isinstance(self.pipe.scheduler, Config.SCHEDULERS[scheduler])
         same_karras = (
@@ -279,5 +281,4 @@ class Loader:
         self._load_vae(taesd, model)
         self._load_deepcache(deepcache)
         self._load_ip_adapter(ip_adapter)
-        self._load_upscaler(scale, device)
-        return self.pipe, self.upscaler
+        self._load_upscaler(scale)
