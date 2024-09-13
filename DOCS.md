@@ -1,18 +1,33 @@
-## Documentation
+## Diffusion ZERO
 
 TL;DR: Enter a prompt or roll the `🎲` and press `Generate`.
 
 ### Prompting
 
-Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel) for weighting. See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more and read [Civitai](https://civitai.com)'s guide on [prompting](https://education.civitai.com/civitais-prompt-crafting-guide-part-1-basics/) for best practices.
+Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel) for weighting. See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more.
+
+Use `+` or `-` to increase the weight of a token. The weight grows exponentially when chained. For example, `blue+` means 1.1x more attention is given to `blue`, while `blue++` means 1.1^2 more, and so on. The same applies to `-`.
+
+For groups of tokens, wrap them in parentheses and multiply by a float between 0 and 2. For example, `a (birthday cake)1.3 on a table` will increase the weight of both `birthday` and `cake` by 1.3x. This also means the entire scene will be more birthday-like, not just the cake. To counteract this, you can use `-` inside the parentheses on specific tokens, e.g., `a (birthday-- cake)1.3`, to reduce the birthday aspect.
+
+Note that this is also the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from AUTOMATIC1111:
+
+| Compel      | AUTOMATIC1111 |
+| ----------- | ------------- |
+| `blue++`    | `((blue))`    |
+| `blue--`    | `[[blue]]`    |
+| `(blue)1.2` | `(blue:1.2)`  |
+| `(blue)0.8` | `(blue:0.8)`  |
 
 #### Arrays
 
-Arrays allow you to generate different images from a single prompt. For example, `[[cat,corgi]]` will expand into 2 separate prompts. Make sure `Images` is set accordingly (e.g., 2). Only works for the positive prompt. Inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
+Arrays allow you to generate multiple different images from a single prompt. For example, `a [[cute,adorable]] [[cat,corgi]]` will expand into `a cute cat` and `a cute corgi`.
+
+Before generating, make sure `Images` is set to the number of images you want and keep in mind that there is a max of 4. Note that arrays in the negative prompt are ignored. This implementation was inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
 
 ### Embeddings
 
-Select multiple negative [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
+Select one or more negative [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings to be appended to the _negative_ prompt:
 
 * [`<fast_negative>`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
 * [`<unrealistic_dream>`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on
@@ -20,11 +35,14 @@ Select multiple negative [textual inversion](https://huggingface.co/docs/diffuse
 
 ### Styles
 
-Styles are prompt templates from twri's [sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node. Start with a subject like "cat", pick a style, and iterate from there.
+[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates originally based on the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node. These work best with a simple subject. For example, `a young adult woman` and `ugly, dull` with the _Abstract Expressionism_ style will result in the following prompts:
+
+* Positive: `abstract expressionist painting of a young adult woman, energetic brushwork, bold colors, abstract forms, expressive, emotional`
+* Negative: `ugly, dull, realistic, photorealistic, low contrast, plain, simple, monochrome`
 
 ### Scale
 
-Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) from [ai-forever](ai-forever/Real-ESRGAN).
+Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN).
 
 ### Models
 
