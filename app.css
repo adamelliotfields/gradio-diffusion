@@ -33,7 +33,7 @@
   overflow-y: auto;
 }
 .gallery, .gallery .grid-wrap {
-  height: calc(100vh - 360px);
+  height: calc(100vh - 400px);
   max-height: none;
 }
 
