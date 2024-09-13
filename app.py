@@ -4,7 +4,7 @@ import random
 
 import gradio as gr
 
-from lib import Config, async_call, generate
+from lib import Config, async_call, download_repo_files, generate
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """
@@ -475,6 +475,9 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--server", type=str, metavar="STR", default="0.0.0.0")
     parser.add_argument("-p", "--port", type=int, metavar="INT", default=7860)
     args = parser.parse_args()
+
+    # download to hub cache
+    download_repo_files()
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
     demo.queue().launch(

@@ -21,6 +21,7 @@ models:
 - h94/IP-Adapter
 - Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
+- madebyollin/taesd
 - prompthero/openjourney-v4
 - SG161222/Realistic_Vision_V5.1_noVAE
 - XpucT/Deliberate
@@ -45,7 +46,10 @@ preload_from_hub:
   anything-v3-2.safetensors
 - >-
   Lykon/dreamshaper-8
-  text_encoder/model.fp16.safetensors,unet/diffusion_pytorch_model.fp16.safetensors,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
+  feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
+- >-
+  madebyollin/taesd
+  config.json,diffusion_pytorch_model.safetensors
 - >-
   prompthero/openjourney-v4
   openjourney-v4.ckpt
