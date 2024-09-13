@@ -25,7 +25,7 @@ models:
 - prompthero/openjourney-v4
 - SG161222/Realistic_Vision_V5.1_noVAE
 - XpucT/Deliberate
-preload_from_hub:
+preload_from_hub:  # up to 10
 - >-
   ai-forever/Real-ESRGAN
   RealESRGAN_x2.pth,RealESRGAN_x4.pth
@@ -47,9 +47,6 @@ preload_from_hub:
 - >-
   Lykon/dreamshaper-8
   feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
-- >-
-  madebyollin/taesd
-  config.json,diffusion_pytorch_model.safetensors
 - >-
   prompthero/openjourney-v4
   openjourney-v4.ckpt
