@@ -45,7 +45,7 @@ Config = SimpleNamespace(
         "sg161222/realistic_vision_v5.1_novae": "Realistic_Vision_V5.1_fp16-no-ema.safetensors",
         "xpuct/deliberate": "Deliberate_v6.safetensors",
     },
-    SCHEDULER="DEIS 2M",
+    SCHEDULER="Euler",
     SCHEDULERS={
         "DDIM": DDIMScheduler,
         "DEIS 2M": DEISMultistepScheduler,
@@ -65,7 +65,7 @@ Config = SimpleNamespace(
     HEIGHT=576,
     NUM_IMAGES=1,
     SEED=-1,
-    GUIDANCE_SCALE=6,
+    GUIDANCE_SCALE=5,
     INFERENCE_STEPS=35,
     DENOISING_STRENGTH=0.7,
     DEEPCACHE_INTERVAL=1,
