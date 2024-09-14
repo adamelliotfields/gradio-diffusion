@@ -475,7 +475,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # download to hub cache
-    download_repo_files()
+    for repo_id, allow_patterns in Config.DOWNLOAD_FILES.items():
+        print(f"Downloading {repo_id}...")
+        download_repo_files(repo_id, allow_patterns, token=Config.HF_TOKEN)
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
     demo.queue().launch(

@@ -1,3 +1,4 @@
+import os
 from types import SimpleNamespace
 
 from diffusers import (
@@ -12,6 +13,25 @@ from diffusers import (
 )
 
 Config = SimpleNamespace(
+    HF_TOKEN=os.environ.get("HF_TOKEN", None),
+    DOWNLOAD_FILES={
+        "Lykon/dreamshaper-8": [
+            "feature_extractor/preprocessor_config.json",
+            "safety_checker/config.json",
+            "scheduler/scheduler_config.json",
+            "text_encoder/config.json",
+            "text_encoder/model.fp16.safetensors",
+            "tokenizer/merges.txt",
+            "tokenizer/special_tokens_map.json",
+            "tokenizer/tokenizer_config.json",
+            "tokenizer/vocab.json",
+            "unet/config.json",
+            "unet/diffusion_pytorch_model.fp16.safetensors",
+            "vae/config.json",
+            "vae/diffusion_pytorch_model.fp16.safetensors",
+            "model_index.json",
+        ],
+    },
     MONO_FONTS=["monospace"],
     SANS_FONTS=[
         "sans-serif",

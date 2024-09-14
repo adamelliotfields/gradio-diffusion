@@ -5,6 +5,7 @@ from typing import Callable, TypeVar
 
 import anyio
 from anyio import Semaphore
+from huggingface_hub._snapshot_download import snapshot_download
 from typing_extensions import ParamSpec
 
 T = TypeVar("T")
@@ -24,6 +25,17 @@ def load_json(path: str) -> dict:
 def read_file(path: str) -> str:
     with open(path, "r", encoding="utf-8") as file:
         return file.read()
+
+
+def download_repo_files(repo_id, allow_patterns, token=None):
+    return snapshot_download(
+        repo_id=repo_id,
+        repo_type="model",
+        revision="main",
+        token=token,
+        allow_patterns=allow_patterns,
+        ignore_patterns=None,
+    )
 
 
 # like the original but supports args and kwargs instead of a dict
