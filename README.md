@@ -62,9 +62,8 @@ preload_from_hub:  # up to 10
 Gradio app for Stable Diffusion 1.5 featuring:
 * txt2img and img2img pipelines with IP-Adapter
 * Curated models, LoRAs, and TI embeddings
-* 100+ styles from sdxl_prompt_styler
-* 150+ prompts from StableStudio
 * Compel prompt weighting
+* dozens of styles and starter prompts
 * Multiple samplers with Karras scheduling
 * DeepCache, FreeU, and Clip Skip available
 * Real-ESRGAN upscaling

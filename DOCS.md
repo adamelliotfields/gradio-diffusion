@@ -27,22 +27,25 @@ Before generating, make sure `Images` is set to the number of images you want an
 
 ### Embeddings
 
-Select one or more negative [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings to be appended to the _negative_ prompt:
+Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
 
-* [`<fast_negative>`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
-* [`<unrealistic_dream>`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on
-* [`<cyberrealistic_negative>`](https://civitai.com/models/77976?modelVersionId=82745): alternative realistic add-on
+* [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
+* [`unrealistic_dream`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on (for RealisticVision)
+* [`cyberrealistic_negative`](https://civitai.com/models/77976?modelVersionId=82745): realistic add-on (for CyberRealistic)
 
 ### Styles
 
-[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates originally based on the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node. These work best with a simple subject. For example, `a young adult woman` and `ugly, dull` with the _Abstract Expressionism_ style will result in the following prompts:
+[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
 
-* Positive: `abstract expressionist painting of a young adult woman, energetic brushwork, bold colors, abstract forms, expressive, emotional`
-* Negative: `ugly, dull, realistic, photorealistic, low contrast, plain, simple, monochrome`
+Start by framing a simple subject like `portrait of a young adult woman` or `landscape of a mountain range`. Experiment with different styles and don't forget about the negative prompt.
+
+> NB: Most styles work best with the Dreamshaper model; however, the "Enhance" style is meant to be universal. The "Photography" styles work especially well with the realistic models.
 
 ### Scale
 
-Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN).
+Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN). Necessary for high-resolution images.
+
+> NB: I find this Real-ESRGAN model to work well, so I do not use a _hi-res fix_.
 
 ### Models
 
