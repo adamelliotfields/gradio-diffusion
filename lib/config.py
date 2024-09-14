@@ -60,7 +60,7 @@ Config = SimpleNamespace(
         "fast_negative",
         "unrealistic_dream",
     ],
-    STYLE="sai-enhance",
+    STYLE="enhance",
     WIDTH=448,
     HEIGHT=576,
     NUM_IMAGES=1,

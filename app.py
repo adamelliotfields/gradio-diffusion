@@ -4,7 +4,7 @@ import random
 
 import gradio as gr
 
-from lib import Config, async_call, download_repo_files, generate
+from lib import Config, async_call, download_repo_files, generate, read_file
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """
@@ -33,17 +33,6 @@ aspect_ratio_js = """
 """
 
 
-def read_file(path: str) -> str:
-    with open(path, "r", encoding="utf-8") as file:
-        return file.read()
-
-
-def random_fn():
-    prompts = read_file("data/prompts.json")
-    prompts = json.loads(prompts)
-    return gr.Textbox(value=random.choice(prompts))
-
-
 def create_image_dropdown(images, locked=False):
     if locked:
         return gr.Dropdown(
@@ -59,24 +48,30 @@ def create_image_dropdown(images, locked=False):
         )
 
 
-def gallery_fn(images, image, ip_image):
+async def gallery_fn(images, image, ip_image):
     return (
         create_image_dropdown(images, locked=image is not None),
         create_image_dropdown(images, locked=ip_image is not None),
     )
 
 
-def image_prompt_fn(images):
+async def image_prompt_fn(images):
     return create_image_dropdown(images)
 
 
-def image_select_fn(images, image, i):
+async def image_select_fn(images, image, i):
     # -2 is the lock icon, -1 is None
     if i == -2:
         return gr.Image(image)
     if i == -1:
         return gr.Image(None)
     return gr.Image(images[i][0]) if i > -1 else None
+
+
+async def random_fn():
+    prompts = read_file("data/prompts.json")
+    prompts = json.loads(prompts)
+    return gr.Textbox(value=random.choice(prompts))
 
 
 async def generate_fn(*args):
@@ -159,10 +154,13 @@ with gr.Blocks(
 
                     with gr.Row():
                         styles = json.loads(read_file("data/styles.json"))
+                        style_ids = list(styles.keys())
+                        style_ids = [sid for sid in style_ids if not sid.startswith("_")]
                         style = gr.Dropdown(
                             value=Config.STYLE,
                             label="Style",
-                            choices=[("None", None)] + [(s["name"], s["id"]) for s in styles],
+                            choices=[("None", "none")]
+                            + [(styles[sid]["name"], sid) for sid in style_ids],
                         )
                         embeddings = gr.Dropdown(
                             elem_id="embeddings",

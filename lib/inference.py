@@ -1,48 +1,23 @@
-import functools
-import inspect
-import json
 import os
 import re
 import time
 from datetime import datetime
 from itertools import product
-from typing import Callable, TypeVar
+from typing import Callable
 
-import anyio
 import numpy as np
 import spaces
 import torch
-from anyio import Semaphore
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
 from PIL import Image
-from typing_extensions import ParamSpec
 
 from .loader import Loader
+from .utils import load_json
 
 __import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
 __import__("transformers").logging.set_verbosity_error()
-
-T = TypeVar("T")
-P = ParamSpec("P")
-
-MAX_CONCURRENT_THREADS = 1
-MAX_THREADS_GUARD = Semaphore(MAX_CONCURRENT_THREADS)
-
-with open("./data/styles.json") as f:
-    STYLES = json.load(f)
-
-
-# like the original but supports args and kwargs instead of a dict
-# https://github.com/huggingface/huggingface-inference-toolkit/blob/0.2.0/src/huggingface_inference_toolkit/async_utils.py
-async def async_call(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
-    async with MAX_THREADS_GUARD:
-        sig = inspect.signature(fn)
-        bound_args = sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
-        partial_fn = functools.partial(fn, **bound_args.arguments)
-        return await anyio.to_thread.run_sync(partial_fn)
 
 
 def parse_prompt_with_arrays(prompt: str) -> list[str]:
@@ -64,21 +39,20 @@ def parse_prompt_with_arrays(prompt: str) -> list[str]:
     return prompts
 
 
-def apply_style(prompt, style_id, negative=False):
-    global STYLES
-    if not style_id or style_id == "None":
-        return prompt
-    for style in STYLES:
-        if style["id"] == style_id:
-            if negative:
-                return (
-                    # prepend our negative prompt to the style's negative prompt
-                    f"{prompt}, {style['negative_prompt']}" if prompt else style["negative_prompt"]
-                )
-            else:
-                # inject our positive prompt into the style prompt
-                return style["prompt"].format(prompt=prompt)
-    return prompt
+def apply_style(positive_prompt, negative_prompt, style_id):
+    if style_id.lower() == "none":
+        return (positive_prompt, negative_prompt)
+
+    styles = load_json("./data/styles.json")
+    style = styles.get(style_id)
+    if style is None:
+        return (positive_prompt, negative_prompt)
+
+    style_base = styles.get("_base", {})
+    return (
+        f"{style.get('positive')}, {style_base.get('positive')}".format(prompt=positive_prompt),
+        f"{style.get('negative')}, {style_base.get('negative')}".format(prompt=negative_prompt),
+    )
 
 
 def prepare_image(input, size=None):
@@ -212,7 +186,7 @@ def generate(
     if scale == 4:
         upscaler = loader.upscaler_4x
 
-    # load embeddings and append to negative prompt
+    embeddings_tokens = []
     embeddings_dir = os.path.join(os.path.dirname(__file__), "..", "embeddings")
     embeddings_dir = os.path.abspath(embeddings_dir)
     for embedding in embeddings:
@@ -222,9 +196,7 @@ def generate(
                 pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
                 token=f"<{embedding}>",
             )
-            negative_prompt = (
-                f"{negative_prompt}, <{embedding}>" if negative_prompt else f"<{embedding}>"
-            )
+            embeddings_tokens.append(f"<{embedding}>")
         except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
             raise Error(f"Invalid embedding: <{embedding}>")
 
@@ -241,24 +213,27 @@ def generate(
     images = []
     current_seed = seed
 
-    try:
-        styled_negative_prompt = apply_style(negative_prompt, style, negative=True)
-        negative_embeds = compel(styled_negative_prompt)
-    except PromptParser.ParsingException:
-        raise Error("ValueError: Invalid negative prompt")
-
     for i in range(num_images):
         # seeded generator for each iteration
         generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
 
         try:
-            all_positive_prompts = parse_prompt_with_arrays(positive_prompt)
-            prompt_index = i % len(all_positive_prompts)
-            prompt = all_positive_prompts[prompt_index]
-            prompt = apply_style(prompt, style)
-            positive_embeds = compel(prompt)
+            positive_prompts = parse_prompt_with_arrays(positive_prompt)
+            index = i % len(positive_prompts)
+            positive_styled, negative_styled = apply_style(
+                positive_prompts[index],
+                negative_prompt,
+                style,
+            )
+
+            if negative_styled.startswith("(), "):
+                negative_styled = negative_styled[4:]
+
+            if embeddings_tokens:
+                negative_styled += ", " + ", ".join(embeddings_tokens)
+
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
-                [positive_embeds, negative_embeds]
+                [compel(positive_styled), compel(negative_styled)]
             )
         except PromptParser.ParsingException:
             raise Error("ValueError: Invalid prompt")
