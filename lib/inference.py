@@ -99,7 +99,7 @@ def generate(
     positive_prompt,
     negative_prompt="",
     image_prompt=None,
-    ip_image=None,
+    ip_image_prompt=None,
     ip_face=False,
     lora_1=None,
     lora_1_weight=0.0,
@@ -144,7 +144,7 @@ def generate(
         else ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
     )
 
-    if ip_image:
+    if ip_image_prompt:
         IP_ADAPTER = "full-face" if ip_face else "plus"
     else:
         IP_ADAPTER = ""
@@ -298,7 +298,7 @@ def generate(
         if IP_ADAPTER:
             # don't resize full-face images since they are usually square crops
             size = None if ip_face else (width, height)
-            kwargs["ip_adapter_image"] = prepare_image(ip_image, size)
+            kwargs["ip_adapter_image"] = prepare_image(ip_image_prompt, size)
 
         try:
             image = pipe(**kwargs).images[0]

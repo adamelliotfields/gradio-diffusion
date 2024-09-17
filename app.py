@@ -60,8 +60,9 @@ async def image_prompt_fn(images):
     return create_image_dropdown(images)
 
 
+# handle selecting an image from the gallery
+# -2 is the lock icon, -1 is None
 async def image_select_fn(images, image, i):
-    # -2 is the lock icon, -1 is None
     if i == -2:
         return gr.Image(image)
     if i == -1:
@@ -82,10 +83,18 @@ async def generate_fn(*args):
         prompt = None
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
+
+    DISABLE_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT = args[-2:]
+    gen_args = list(args[:-2])
+    if DISABLE_IMAGE_PROMPT:
+        gen_args[2] = None
+    if DISABLE_IP_IMAGE_PROMPT:
+        gen_args[3] = None
+
     try:
         images = await async_call(
             generate,
-            *args,
+            *gen_args,
             Info=gr.Info,
             Error=gr.Error,
             progress=gr.Progress(),
@@ -119,6 +128,10 @@ with gr.Blocks(
         block_background_fill_dark=gr.themes.colors.gray.c900,
     ),
 ) as demo:
+    # override image inputs without clearing them
+    DISABLE_IMAGE_PROMPT = gr.State(False)
+    DISABLE_IP_IMAGE_PROMPT = gr.State(False)
+
     gr.HTML(read_file("./partials/intro.html"))
 
     with gr.Accordion(
@@ -312,25 +325,26 @@ with gr.Blocks(
 
             # img2img tab
             with gr.TabItem("🖼️ Image"):
-                with gr.Row():
-                    image_prompt = gr.Image(
-                        show_share_button=False,
-                        show_label=False,
-                        min_width=320,
-                        format="png",
-                        type="pil",
-                    )
-                    ip_image = gr.Image(
-                        show_share_button=False,
-                        label="IP-Adapter",
-                        min_width=320,
-                        format="png",
-                        type="pil",
-                    )
-
                 with gr.Group():
                     with gr.Row():
+                        image_prompt = gr.Image(
+                            show_share_button=False,
+                            label="Initial Image",
+                            min_width=320,
+                            format="png",
+                            type="pil",
+                        )
+                        ip_image_prompt = gr.Image(
+                            show_share_button=False,
+                            label="IP-Adapter Image",
+                            min_width=320,
+                            format="png",
+                            type="pil",
+                        )
+
+                    with gr.Row():
                         image_select = gr.Dropdown(
+                            info="Use an initial image from the gallery",
                             choices=[("None", -1)],
                             label="Gallery Image",
                             interactive=True,
@@ -338,8 +352,9 @@ with gr.Blocks(
                             value=-1,
                         )
                         ip_image_select = gr.Dropdown(
-                            choices=[("None", -1)],
+                            info="Use an IP-Adapter image from the gallery",
                             label="Gallery Image (IP-Adapter)",
+                            choices=[("None", -1)],
                             interactive=True,
                             filterable=False,
                             value=-1,
@@ -355,9 +370,19 @@ with gr.Blocks(
                         )
 
                     with gr.Row():
+                        disable_image = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="Disable Initial Image",
+                            value=False,
+                        )
+                        disable_ip_image = gr.Checkbox(
+                            elem_classes=["checkbox"],
+                            label="Disable IP-Adapter Image",
+                            value=False,
+                        )
                         ip_face = gr.Checkbox(
                             elem_classes=["checkbox"],
-                            label="IP-Adapter Face",
+                            label="Use IP-Adapter Face",
                             value=False,
                         )
 
@@ -418,7 +443,7 @@ with gr.Blocks(
     file_format.change(
         lambda f: (gr.Gallery(format=f), gr.Image(format=f), gr.Image(format=f)),
         inputs=[file_format],
-        outputs=[output_images, image_prompt, ip_image],
+        outputs=[output_images, image_prompt, ip_image_prompt],
         show_api=False,
     )
 
@@ -433,7 +458,7 @@ with gr.Blocks(
     # lock the input images so you don't lose them when the gallery updates
     output_images.change(
         gallery_fn,
-        inputs=[output_images, image_prompt, ip_image],
+        inputs=[output_images, image_prompt, ip_image_prompt],
         outputs=[image_select, ip_image_select],
         show_api=False,
     )
@@ -447,8 +472,8 @@ with gr.Blocks(
     )
     ip_image_select.change(
         image_select_fn,
-        inputs=[output_images, ip_image, ip_image_select],
-        outputs=[ip_image],
+        inputs=[output_images, ip_image_prompt, ip_image_select],
+        outputs=[ip_image_prompt],
         show_api=False,
     )
 
@@ -459,7 +484,7 @@ with gr.Blocks(
         outputs=[image_select],
         show_api=False,
     )
-    ip_image.clear(
+    ip_image_prompt.clear(
         image_prompt_fn,
         inputs=[output_images],
         outputs=[ip_image_select],
@@ -475,6 +500,15 @@ with gr.Blocks(
         js="() => { return null; }",
     )
 
+    # toggle image prompts by updating session state
+    gr.on(
+        triggers=[disable_image.input, disable_ip_image.input],
+        fn=lambda disable_image, disable_ip_image: (disable_image, disable_ip_image),
+        inputs=[disable_image, disable_ip_image],
+        outputs=[DISABLE_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT],
+    )
+
+    # generate images
     gr.on(
         triggers=[generate_btn.click, prompt.submit],
         fn=generate_fn,
@@ -485,7 +519,7 @@ with gr.Blocks(
             prompt,
             negative_prompt,
             image_prompt,
-            ip_image,
+            ip_image_prompt,
             ip_face,
             lora_1,
             lora_1_weight,
@@ -508,6 +542,8 @@ with gr.Blocks(
             use_taesd,
             use_freeu,
             use_clip_skip,
+            DISABLE_IMAGE_PROMPT,
+            DISABLE_IP_IMAGE_PROMPT,
         ],
     )
 
