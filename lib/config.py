@@ -10,6 +10,7 @@ from diffusers import (
     PNDMScheduler,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionPipeline,
+    UniPCMultistepScheduler,
 )
 
 Config = SimpleNamespace(
@@ -90,6 +91,7 @@ Config = SimpleNamespace(
         "Euler": EulerDiscreteScheduler,
         "Euler a": EulerAncestralDiscreteScheduler,
         "PNDM": PNDMScheduler,
+        "UniPC 2M": UniPCMultistepScheduler,
     },
     EMBEDDING="fast_negative",
     EMBEDDINGS=[
