@@ -51,8 +51,12 @@ def apply_style(positive_prompt, negative_prompt, style_id="none"):
 
     style_base = styles.get("_base", {})
     return (
-        f"{style.get('positive')}, {style_base.get('positive')}".format(prompt=positive_prompt),
-        f"{style.get('negative')}, {style_base.get('negative')}".format(prompt=negative_prompt),
+        style.get("positive")
+        .format(prompt=positive_prompt, _base=style_base.get("positive"))
+        .strip(),
+        style.get("negative")
+        .format(prompt=negative_prompt, _base=style_base.get("negative"))
+        .strip(),
     )
 
 

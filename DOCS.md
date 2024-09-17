@@ -51,7 +51,7 @@ Apply up to 2 LoRA (low-rank adaptation) adapters with adjustable strength:
 
 Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
 
-* [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
+* [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default, **recommended**)
 * [`cyberrealistic_negative`](https://civitai.com/models/77976?modelVersionId=82745): realistic add-on (for CyberRealistic)
 * [`unrealistic_dream`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on (for RealisticVision)
 
@@ -63,11 +63,19 @@ Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/
 
 Start by framing a simple subject like `portrait of a young adult woman` or `landscape of a mountain range` and experiment.
 
+#### Anime
+
+The `Anime: *` styles work the best with Dreamshaper. When using the anime-specific Anything model, you should use the `Anime: Anything` style with the following settings:
+
+* Scheduler: `DEIS 2M` or `DPM++ 2M`
+* Guidance: `10`
+* Steps: `50`
+
+You subject should be a few simple tokens like `girl, brunette, blue eyes, armor, nebula, celestial`. Experiment with `Clip Skip` and `Karras`. Finish with the `Perfection Style` LoRA on a moderate setting and upscale. 
+
 ### Scale
 
 Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN). Necessary for high-resolution images.
-
-> NB: I find this Real-ESRGAN model to work well, so I do not use a _hi-res fix_.
 
 ### Image-to-Image
 
