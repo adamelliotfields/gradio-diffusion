@@ -235,6 +235,7 @@ def generate(
     compel = Compel(
         device=pipe.device,
         tokenizer=pipe.tokenizer,
+        truncate_long_prompts=False,
         text_encoder=pipe.text_encoder,
         returned_embeddings_type=EMBEDDINGS_TYPE,
         dtype_for_device_getter=lambda _: pipe.dtype,
