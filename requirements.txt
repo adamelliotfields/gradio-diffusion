@@ -9,6 +9,7 @@ h2
 hf-transfer
 httpx
 numpy==1.26.4
+peft
 ruff==0.5.7
 spaces
 torch==2.2.0
