@@ -91,7 +91,7 @@ async def generate_fn(*args):
             progress=gr.Progress(),
         )
     except RuntimeError:
-        raise gr.Error("RuntimeError: Please try again")
+        raise gr.Error("Error: Please try again")
     return images
 
 
@@ -249,6 +249,9 @@ with gr.Blocks(
                             step=32,
                         )
                         aspect_ratio = gr.Dropdown(
+                            value=f"{Config.WIDTH},{Config.HEIGHT}",
+                            label="Aspect Ratio",
+                            filterable=False,
                             choices=[
                                 ("Custom", None),
                                 ("4:7 (384x672)", "384,672"),
@@ -257,9 +260,6 @@ with gr.Blocks(
                                 ("9:7 (576x448)", "576,448"),
                                 ("7:4 (672x384)", "672,384"),
                             ],
-                            value="448,576",
-                            filterable=False,
-                            label="Aspect Ratio",
                         )
 
                     with gr.Row():

@@ -62,7 +62,6 @@ def download_civit_file(lora_id, version_id, file_path=".", token=None):
         with open(file, "wb") as f:
             f.write(response.content)
     except httpx.HTTPStatusError as e:
-        print(e.request.url)
         print(f"HTTPError: {e.response.status_code} {e.response.text}")
     except httpx.RequestError as e:
         print(f"RequestError: {e}")
