@@ -37,6 +37,10 @@
   max-height: none;
 }
 
+.gap-0, .gap-0 * {
+  gap: 0px;
+}
+
 .icon-button {
   max-width: 42px;
 }

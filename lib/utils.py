@@ -1,9 +1,11 @@
 import functools
 import inspect
 import json
+import os
 from typing import Callable, TypeVar
 
 import anyio
+import httpx
 from anyio import Semaphore
 from huggingface_hub._snapshot_download import snapshot_download
 from typing_extensions import ParamSpec
@@ -36,6 +38,34 @@ def download_repo_files(repo_id, allow_patterns, token=None):
         allow_patterns=allow_patterns,
         ignore_patterns=None,
     )
+
+
+def download_civit_file(lora_id, version_id, file_path=".", token=None):
+    base_url = "https://civitai.com/api/download/models"
+    file = f"{file_path}/{lora_id}.{version_id}.safetensors"
+
+    if os.path.exists(file):
+        return
+
+    try:
+        params = {"token": token}
+        response = httpx.get(
+            f"{base_url}/{version_id}",
+            timeout=None,
+            params=params,
+            follow_redirects=True,
+        )
+
+        response.raise_for_status()
+        os.makedirs(file_path, exist_ok=True)
+
+        with open(file, "wb") as f:
+            f.write(response.content)
+    except httpx.HTTPStatusError as e:
+        print(e.request.url)
+        print(f"HTTPError: {e.response.status_code} {e.response.text}")
+    except httpx.RequestError as e:
+        print(f"RequestError: {e}")
 
 
 # like the original but supports args and kwargs instead of a dict

@@ -1,10 +1,11 @@
 import argparse
 import json
+import os
 import random
 
 import gradio as gr
 
-from lib import Config, async_call, download_repo_files, generate, read_file
+from lib import Config, async_call, download_civit_file, download_repo_files, generate, read_file
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """
@@ -130,9 +131,8 @@ with gr.Blocks(
             with gr.TabItem("⚙️ Settings"):
                 with gr.Group():
                     negative_prompt = gr.Textbox(
-                        value=None,
+                        value="nsfw+",
                         label="Negative Prompt",
-                        placeholder="ugly, bad",
                         lines=2,
                     )
 
@@ -159,6 +159,7 @@ with gr.Blocks(
                         style = gr.Dropdown(
                             value=Config.STYLE,
                             label="Style",
+                            min_width=240,
                             choices=[("None", "none")]
                             + [(styles[sid]["name"], sid) for sid in style_ids],
                         )
@@ -170,6 +171,44 @@ with gr.Blocks(
                             value=[Config.EMBEDDING],
                             min_width=240,
                         )
+
+                    with gr.Row():
+                        with gr.Group(elem_classes=["gap-0"]):
+                            lora_1 = gr.Dropdown(
+                                min_width=240,
+                                label="LoRA #1",
+                                value="none",
+                                choices=[("None", "none")]
+                                + [
+                                    (lora["name"], lora_id)
+                                    for lora_id, lora in Config.CIVIT_LORAS.items()
+                                ],
+                            )
+                            lora_1_weight = gr.Slider(
+                                value=0.0,
+                                minimum=0.0,
+                                maximum=1.0,
+                                step=0.1,
+                                show_label=False,
+                            )
+                        with gr.Group(elem_classes=["gap-0"]):
+                            lora_2 = gr.Dropdown(
+                                min_width=240,
+                                label="LoRA #2",
+                                value="none",
+                                choices=[("None", "none")]
+                                + [
+                                    (lora["name"], lora_id)
+                                    for lora_id, lora in Config.CIVIT_LORAS.items()
+                                ],
+                            )
+                            lora_2_weight = gr.Slider(
+                                value=0.0,
+                                minimum=0.0,
+                                maximum=1.0,
+                                step=0.1,
+                                show_label=False,
+                            )
 
                     with gr.Row():
                         guidance_scale = gr.Slider(
@@ -336,7 +375,7 @@ with gr.Blocks(
                 columns=2,
             )
             prompt = gr.Textbox(
-                placeholder="corgi, beach, 8k",
+                placeholder="What do you want to see?",
                 autoscroll=False,
                 show_label=False,
                 label="Prompt",
@@ -448,6 +487,10 @@ with gr.Blocks(
             image_prompt,
             ip_image,
             ip_face,
+            lora_1,
+            lora_1_weight,
+            lora_2,
+            lora_2_weight,
             embeddings,
             style,
             seed,
@@ -475,9 +518,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # download to hub cache
-    for repo_id, allow_patterns in Config.DOWNLOAD_FILES.items():
-        print(f"Downloading {repo_id}...")
+    for repo_id, allow_patterns in Config.HF_MODELS.items():
         download_repo_files(repo_id, allow_patterns, token=Config.HF_TOKEN)
+
+    # download civit loras
+    for lora_id, lora in Config.CIVIT_LORAS.items():
+        file_path = os.path.join(os.path.dirname(__file__), "loras")
+        download_civit_file(
+            lora_id,
+            lora["model_version_id"],
+            file_path=file_path,
+            token=Config.CIVIT_TOKEN,
+        )
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
     demo.queue().launch(

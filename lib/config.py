@@ -14,7 +14,8 @@ from diffusers import (
 
 Config = SimpleNamespace(
     HF_TOKEN=os.environ.get("HF_TOKEN", None),
-    DOWNLOAD_FILES={
+    CIVIT_TOKEN=os.environ.get("CIVIT_TOKEN", None),
+    HF_MODELS={
         "Lykon/dreamshaper-8": [
             "feature_extractor/preprocessor_config.json",
             "safety_checker/config.json",
@@ -31,6 +32,22 @@ Config = SimpleNamespace(
             "vae/diffusion_pytorch_model.fp16.safetensors",
             "model_index.json",
         ],
+    },
+    CIVIT_LORAS={
+        # https://civitai.com/models/411088?modelVersionId=486099
+        "perfection_style": {
+            "model_id": "411088",
+            "model_version_id": "486099",
+            "name": "Perfection Style",
+            "trigger": "perfection style",
+        },
+        # https://civitai.com/models/421162?modelVersionId=486110
+        "detailed_style": {
+            "model_id": "421162",
+            "model_version_id": "486110",
+            "name": "Detailed Style",
+            "trigger": "detailed style",
+        },
     },
     MONO_FONTS=["monospace"],
     SANS_FONTS=[
@@ -81,8 +98,8 @@ Config = SimpleNamespace(
         "unrealistic_dream",
     ],
     STYLE="enhance",
-    WIDTH=448,
-    HEIGHT=576,
+    WIDTH=512,
+    HEIGHT=512,
     NUM_IMAGES=1,
     SEED=-1,
     GUIDANCE_SCALE=5,

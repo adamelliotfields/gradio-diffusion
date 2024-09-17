@@ -10,7 +10,7 @@ Use `+` or `-` to increase the weight of a token. The weight grows exponentially
 
 For groups of tokens, wrap them in parentheses and multiply by a float between 0 and 2. For example, `a (birthday cake)1.3 on a table` will increase the weight of both `birthday` and `cake` by 1.3x. This also means the entire scene will be more birthday-like, not just the cake. To counteract this, you can use `-` inside the parentheses on specific tokens, e.g., `a (birthday-- cake)1.3`, to reduce the birthday aspect.
 
-Note that this is also the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from AUTOMATIC1111:
+This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from AUTOMATIC1111:
 
 | Compel      | AUTOMATIC1111 |
 | ----------- | ------------- |
@@ -21,44 +21,53 @@ Note that this is also the same syntax used in [InvokeAI](https://invoke-ai.gith
 
 #### Arrays
 
-Arrays allow you to generate multiple different images from a single prompt. For example, `a [[cute,adorable]] [[cat,corgi]]` will expand into `a cute cat` and `a cute corgi`.
+Arrays allow you to generate multiple different images from a single prompt. For example, `an adult [[blonde,brunette]] [[man,woman]]` will expand into **4** different prompts. This implementation was inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
 
-Before generating, make sure `Images` is set to the number of images you want and keep in mind that there is a max of 4. Note that arrays in the negative prompt are ignored. This implementation was inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
-
-### Embeddings
-
-Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
-
-* [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
-* [`unrealistic_dream`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on (for RealisticVision)
-* [`cyberrealistic_negative`](https://civitai.com/models/77976?modelVersionId=82745): realistic add-on (for CyberRealistic)
-
-### Styles
-
-[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
-
-Start by framing a simple subject like `portrait of a young adult woman` or `landscape of a mountain range`. Experiment with different styles and don't forget about the negative prompt.
-
-> NB: Most styles work best with the Dreamshaper model; however, the "Enhance" style is meant to be universal. The "Photography" styles work especially well with the realistic models.
-
-### Scale
-
-Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN). Necessary for high-resolution images.
-
-> NB: I find this Real-ESRGAN model to work well, so I do not use a _hi-res fix_.
+> NB: Make sure to set `Images` to the number of images you want to generate. Otherwise, only the first prompt will be used.
 
 ### Models
 
 Each model checkpoint has a different aesthetic:
 
 * [Comfy-Org/stable-diffusion-v1-5](https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive): base
-* [cyberdelia/CyberRealistic_v5](https://huggingface.co/cyberdelia/CyberRealistic): photorealistic
+* [cyberdelia/CyberRealistic_V5](https://huggingface.co/cyberdelia/CyberRealistic): realistic
 * [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8): general purpose (default)
-* [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4): general purpose
+* [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4): general purpose stylized
 * [Linaqruf/anything-v3-1](https://huggingface.co/Linaqruf/anything-v3-1): anime
-* [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4): Midjourney-like
-* [SG161222/Realistic_Vision_v5.1](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE): photorealistic
-* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate): general purpose
+* [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4): Midjourney art style
+* [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE): realistic
+* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate): general purpose stylized
+
+### LoRA
+
+Apply up to 2 LoRA (low-rank adaptation) adapters with adjustable strength:
+
+* [Perfection Style](https://civitai.com/models/411088?modelVersionId=486099): attempts to improve aesthetics, use high strength
+* [Detailed Style](https://civitai.com/models/421162?modelVersionId=486110): attempts to improve details, use low strength
+
+> NB: The trigger words are automatically appended to the positive prompt for you.
+
+### Embeddings
+
+Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
+
+* [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default)
+* [`cyberrealistic_negative`](https://civitai.com/models/77976?modelVersionId=82745): realistic add-on (for CyberRealistic)
+* [`unrealistic_dream`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on (for RealisticVision)
+
+> NB: The trigger token is automatically appended to the negative prompt for you.
+
+### Styles
+
+[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
+
+Start by framing a simple subject like `portrait of a young adult woman` or `landscape of a mountain range` and experiment.
+
+### Scale
+
+Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN). Necessary for high-resolution images.
+
+> NB: I find this Real-ESRGAN model to work well, so I do not use a _hi-res fix_.
 
 ### Image-to-Image
 

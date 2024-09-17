@@ -17,7 +17,7 @@ async def main():
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("prompt", type=str, metavar="PROMPT")
     parser.add_argument("-n", "--negative", type=str, metavar="STR", default="")
-    parser.add_argument("-e", "--embedding", type=str, metavar="STR", default=[], action="append")
+    parser.add_argument("-e", "--embeddings", type=str, metavar="STR", default="")
     parser.add_argument("-s", "--seed", type=int, metavar="INT", default=Config.SEED)
     parser.add_argument("-i", "--images", type=int, metavar="INT", default=1)
     parser.add_argument("-f", "--filename", type=str, metavar="STR", default="image.png")
@@ -25,12 +25,16 @@ async def main():
     parser.add_argument("-h", "--height", type=int, metavar="INT", default=Config.HEIGHT)
     parser.add_argument("-m", "--model", type=str, metavar="STR", default=Config.MODEL)
     parser.add_argument("-d", "--deepcache", type=int, metavar="INT", default=Config.DEEPCACHE_INTERVAL)
+    parser.add_argument("--lora-1", type=str, metavar="STR", default="")
+    parser.add_argument("--lora-1-weight", type=float, metavar="FLOAT", default=0.0)
+    parser.add_argument("--lora-2", type=str, metavar="STR", default="")
+    parser.add_argument("--lora-2-weight", type=float, metavar="FLOAT", default=0.0)
     parser.add_argument("--scale", type=int, metavar="INT", choices=Config.SCALES, default=Config.SCALE)
     parser.add_argument("--style", type=str, metavar="STR", default=Config.STYLE)
     parser.add_argument("--scheduler", type=str, metavar="STR", default=Config.SCHEDULER)
     parser.add_argument("--guidance", type=float, metavar="FLOAT", default=Config.GUIDANCE_SCALE)
     parser.add_argument("--steps", type=int, metavar="INT", default=Config.INFERENCE_STEPS)
-    parser.add_argument("--strength", type=float, metavar="FLOAT", default=Config.DENOISING_STRENGTH)
+    parser.add_argument("--image-strength", type=float, metavar="FLOAT", default=Config.DENOISING_STRENGTH)
     parser.add_argument("--image", type=str, metavar="STR")
     parser.add_argument("--ip-image", type=str, metavar="STR")
     parser.add_argument("--ip-face", action="store_true")
@@ -48,7 +52,11 @@ async def main():
         args.image,
         args.ip_image,
         args.ip_face,
-        args.embedding,
+        args.lora_1,
+        args.lora_1_weight,
+        args.lora_2,
+        args.lora_2_weight,
+        args.embeddings.split(",") if args.embeddings else [],
         args.style,
         args.seed,
         args.model,
@@ -57,7 +65,7 @@ async def main():
         args.height,
         args.guidance,
         args.steps,
-        args.strength,
+        args.image_strength,
         args.deepcache,
         args.scale,
         args.images,
@@ -66,7 +74,7 @@ async def main():
         args.freeu,
         args.clip_skip,
     )
-    await async_call(save_images, images, args.filename)
+    save_images(images, args.filename)
 
 
 if __name__ == "__main__":

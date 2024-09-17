@@ -13,6 +13,7 @@ from compel.prompt_parser import PromptParser
 from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
 from PIL import Image
 
+from .config import Config
 from .loader import Loader
 from .utils import load_json
 
@@ -39,7 +40,7 @@ def parse_prompt_with_arrays(prompt: str) -> list[str]:
     return prompts
 
 
-def apply_style(positive_prompt, negative_prompt, style_id):
+def apply_style(positive_prompt, negative_prompt, style_id="none"):
     if style_id.lower() == "none":
         return (positive_prompt, negative_prompt)
 
@@ -96,6 +97,10 @@ def generate(
     image_prompt=None,
     ip_image=None,
     ip_face=False,
+    lora_1=None,
+    lora_1_weight=0.0,
+    lora_2=None,
+    lora_2_weight=0.0,
     embeddings=[],
     style=None,
     seed=None,
@@ -176,7 +181,7 @@ def generate(
     )
 
     if loader.pipe is None:
-        raise Error(f"RuntimeError: Error loading {model}")
+        raise Error(f"Error loading {model}")
 
     pipe = loader.pipe
     upscaler = None
@@ -186,9 +191,36 @@ def generate(
     if scale == 4:
         upscaler = loader.upscaler_4x
 
-    embeddings_tokens = []
-    embeddings_dir = os.path.join(os.path.dirname(__file__), "..", "embeddings")
-    embeddings_dir = os.path.abspath(embeddings_dir)
+    # load loras
+    loras = []
+    weights = []
+    loras_and_weights = [(lora_1, lora_1_weight), (lora_2, lora_2_weight)]
+    loras_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "loras"))
+    for lora, weight in loras_and_weights:
+        if lora and lora.lower() != "none" and lora not in loras:
+            config = Config.CIVIT_LORAS.get(lora)
+            if config:
+                try:
+                    pipe.load_lora_weights(
+                        loras_dir,
+                        adapter_name=lora,
+                        weight_name=f"{lora}.{config['model_version_id']}.safetensors",
+                    )
+                    weights.append(weight)
+                    loras.append(lora)
+                except Exception:
+                    raise Error(f"Error loading {config['name']} LoRA")
+
+    # unload after generating or if there was an error
+    try:
+        if loras:
+            pipe.set_adapters(loras, adapter_weights=weights)
+    except Exception:
+        pipe.unload_lora_weights()
+        raise Error("Error setting LoRA weights")
+
+    # load embeddings
+    embeddings_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "embeddings"))
     for embedding in embeddings:
         try:
             # wrap embeddings in angle brackets
@@ -196,9 +228,8 @@ def generate(
                 pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
                 token=f"<{embedding}>",
             )
-            embeddings_tokens.append(f"<{embedding}>")
         except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
-            raise Error(f"Invalid embedding: <{embedding}>")
+            raise Error(f"Invalid embedding: {embedding}")
 
     # prompt embeds
     compel = Compel(
@@ -212,7 +243,6 @@ def generate(
 
     images = []
     current_seed = seed
-
     for i in range(num_images):
         # seeded generator for each iteration
         generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
@@ -229,14 +259,18 @@ def generate(
             if negative_styled.startswith("(), "):
                 negative_styled = negative_styled[4:]
 
-            if embeddings_tokens:
-                negative_styled += ", " + ", ".join(embeddings_tokens)
+            for lora in loras:
+                positive_styled += f", {Config.CIVIT_LORAS[lora]['trigger']}"
 
+            for embedding in embeddings:
+                negative_styled += f", <{embedding}>"
+
+            # print prompts
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
                 [compel(positive_styled), compel(negative_styled)]
             )
         except PromptParser.ParsingException:
-            raise Error("ValueError: Invalid prompt")
+            raise Error("Invalid prompt")
 
         kwargs = {
             "width": width,
@@ -244,8 +278,8 @@ def generate(
             "generator": generator,
             "prompt_embeds": positive_embeds,
             "guidance_scale": guidance_scale,
-            "negative_prompt_embeds": negative_embeds,
             "num_inference_steps": inference_steps,
+            "negative_prompt_embeds": negative_embeds,
             "output_type": "np" if scale > 1 else "pil",
         }
 
@@ -257,7 +291,7 @@ def generate(
             kwargs["image"] = prepare_image(image_prompt, (width, height))
 
         if IP_ADAPTER:
-            # don't resize full-face images
+            # don't resize full-face images since they are usually square crops
             size = None if ip_face else (width, height)
             kwargs["ip_adapter_image"] = prepare_image(ip_image, size)
 
@@ -268,9 +302,12 @@ def generate(
             images.append((image, str(current_seed)))
             current_seed += 1
         except Exception as e:
-            raise Error(f"RuntimeError: {e}")
+            raise Error(f"{e}")
         finally:
-            pipe.unload_textual_inversion()
+            if embeddings:
+                pipe.unload_textual_inversion()
+            if loras:
+                pipe.unload_lora_weights()
             CURRENT_STEP = 0
             CURRENT_IMAGE += 1
 
