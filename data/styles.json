@@ -1,11 +1,11 @@
 {
   "_base": {
-    "positive": "professional, perfection, accurate, precision, highly detailed, best quality, masterpiece",
-    "negative": "watermark, trademark, signature, autograph, missing things, anatomically incorrect, structural anomalies, extraneous elements, redundant features, compression artifacts, deformed, mutated, ugly, unattractive, noisy, grainy, blurry, distorted, oversaturated, undersaturated, overexposed, underexposed, amateurish, sloppy, cluttered, low detail, worst quality"
+    "positive": "professional, accurate, precise, highly detailed, best quality, masterpiece",
+    "negative": "watermark, trademark, signature, autograph, artifacts, deformed, mutated, bad, ugly, unattractive, noisy, grainy, blurry, distorted, oversaturated, undersaturated, overexposed, underexposed, amateur, sloppy, cluttered, low detail, worst quality"
   },
   "abstract": {
     "name": "Abstract",
-    "positive": "({prompt}), in an abstract art style, non-representational colors and shapes, expressive, emotional, imaginative, spontaneous, vibrant",
+    "positive": "({prompt}), in an abstract art style, non-representational colors and shapes, expressive, imaginative, vibrant",
     "negative": "({prompt}), discrete, objective, realism, photographic, monochrome, muted"
   },
   "anime_shonen": {
@@ -31,11 +31,11 @@
   "art_deco": {
     "name": "Art Deco",
     "positive": "({prompt}), in an art deco style, inspired by Tamara de Lempicka, geometric shapes, bold colors, luxurious, elegant, sleek, streamlined, symmetrical, vibrant, high contrast",
-    "negative": "({prompt}), realism, photographic, organic, natural, monochrome, muted, low contrast"
+    "negative": "({prompt}), realism, photographic, asymmetrical, monochrome, muted, low contrast"
   },
   "biomechanical": {
     "name": "Biomechanical",
-    "positive": "({prompt}), in a biomechanical style, organic and mechanical, flesh and metal, cybernetic organism, intricate design, futuristic, sci-fi",
+    "positive": "({prompt}), in a biomechanical style, organic and mechanical, flesh and metal, cyborg, cybernetic, intricate design, futuristic, sci-fi",
     "negative": "({prompt}), natural, rustic, primitive, medieval"
   },
   "cubism": {
@@ -45,7 +45,7 @@
   },
   "cyberpunk": {
     "name": "Cyberpunk",
-    "positive": "({prompt}), in a cyberpunk style, 2077, synthwave elements, neon lights, digital effects, high-tech, futuristic, dystopian, vibrant, high contrast",
+    "positive": "({prompt}), in a cyberpunk style, 2077, synthwave, neon, digital, high-tech, futuristic, dystopian, vibrant, high contrast",
     "negative": "({prompt}), rustic, primitive, medieval, monochrome, muted, low contrast"
   },
   "enhance": {
@@ -55,7 +55,7 @@
   },
   "expressionism": {
     "name": "Expressionism",
-    "positive": "({prompt}), in an expressionist style, energetic brushwork, bold colors, abstract forms, vibrant, expressive, high contrast",
+    "positive": "({prompt}), in an expressionist style, energetic brushwork, bold colors, abstract forms, vibrant, expressive, imaginative, high contrast",
     "negative": "({prompt}), discrete, objective, realism, photographic, dull, plain, monochrome, muted, low contrast"
   },
   "fantasy": {
@@ -110,7 +110,7 @@
   },
   "pointillism": {
     "name": "Pointillism",
-    "positive": "({prompt}), pointillism style, inspired by Georges Seurat, composed entirely of small colorful dots, intricate design, vibrant",
+    "positive": "({prompt}), pointillism style, composed of small dots, inspired by Georges Seurat, intricate design, vibrant",
     "negative": "({prompt}), line drawing, smooth shading, wide color gamut, dull, plain, monochrome, muted"
   },
   "pop_art": {
