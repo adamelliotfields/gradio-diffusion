@@ -134,305 +134,305 @@ with gr.Blocks(
 
     gr.HTML(read_file("./partials/intro.html"))
 
-    with gr.Accordion(
-        elem_classes=["accordion"],
-        elem_id="menu",
-        label="Menu",
-        open=False,
-    ):
-        with gr.Tabs():
-            with gr.TabItem("⚙️ Settings"):
+    with gr.Tabs():
+        with gr.TabItem("🏠 Text"):
+            with gr.Column():
                 with gr.Group():
-                    negative_prompt = gr.Textbox(
-                        value="nsfw+",
-                        label="Negative Prompt",
-                        lines=2,
+                    output_images = gr.Gallery(
+                        elem_classes=["gallery"],
+                        show_share_button=False,
+                        object_fit="cover",
+                        interactive=False,
+                        show_label=False,
+                        label="Output",
+                        format="png",
+                        columns=2,
+                    )
+                    prompt = gr.Textbox(
+                        placeholder="What do you want to see?",
+                        autoscroll=False,
+                        show_label=False,
+                        label="Prompt",
+                        max_lines=3,
+                        lines=3,
                     )
 
-                    with gr.Row():
-                        model = gr.Dropdown(
-                            choices=Config.MODELS,
-                            filterable=False,
-                            value=Config.MODEL,
-                            label="Model",
-                            min_width=240,
-                        )
-                        scheduler = gr.Dropdown(
-                            choices=Config.SCHEDULERS.keys(),
-                            value=Config.SCHEDULER,
-                            elem_id="scheduler",
-                            label="Scheduler",
-                            filterable=False,
-                        )
+                # Buttons
+                with gr.Row():
+                    generate_btn = gr.Button("Generate", variant="primary")
+                    random_btn = gr.Button(
+                        elem_classes=["icon-button", "popover"],
+                        variant="secondary",
+                        elem_id="random",
+                        min_width=0,
+                        value="🎲",
+                    )
+                    refresh_btn = gr.Button(
+                        elem_classes=["icon-button", "popover"],
+                        variant="secondary",
+                        elem_id="refresh",
+                        min_width=0,
+                        value="🔄",
+                    )
+                    clear_btn = gr.ClearButton(
+                        elem_classes=["icon-button", "popover"],
+                        components=[output_images],
+                        variant="secondary",
+                        elem_id="clear",
+                        min_width=0,
+                        value="🗑️",
+                    )
 
-                    with gr.Row():
-                        styles = json.loads(read_file("data/styles.json"))
-                        style_ids = list(styles.keys())
-                        style_ids = [sid for sid in style_ids if not sid.startswith("_")]
-                        style = gr.Dropdown(
-                            value=Config.STYLE,
-                            label="Style",
+        # img2img tab
+        with gr.TabItem("🖼️ Image"):
+            with gr.Group():
+                with gr.Row():
+                    image_prompt = gr.Image(
+                        show_share_button=False,
+                        label="Initial Image",
+                        min_width=320,
+                        format="png",
+                        type="pil",
+                    )
+                    ip_image_prompt = gr.Image(
+                        show_share_button=False,
+                        label="IP-Adapter Image",
+                        min_width=320,
+                        format="png",
+                        type="pil",
+                    )
+
+                with gr.Row():
+                    image_select = gr.Dropdown(
+                        info="Use an initial image from the gallery",
+                        choices=[("None", -1)],
+                        label="Gallery Image",
+                        interactive=True,
+                        filterable=False,
+                        value=-1,
+                    )
+                    ip_image_select = gr.Dropdown(
+                        info="Use an IP-Adapter image from the gallery",
+                        label="Gallery Image (IP-Adapter)",
+                        choices=[("None", -1)],
+                        interactive=True,
+                        filterable=False,
+                        value=-1,
+                    )
+
+                with gr.Row():
+                    denoising_strength = gr.Slider(
+                        value=Config.DENOISING_STRENGTH,
+                        label="Denoising Strength",
+                        minimum=0.0,
+                        maximum=1.0,
+                        step=0.1,
+                    )
+
+                with gr.Row():
+                    disable_image = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="Disable Initial Image",
+                        value=False,
+                    )
+                    disable_ip_image = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="Disable IP-Adapter Image",
+                        value=False,
+                    )
+                    ip_face = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="Use IP-Adapter Face",
+                        value=False,
+                    )
+
+        # img2img tab
+        with gr.TabItem("🎮 Control"):
+            gr.Markdown(
+                "[ControlNet](https://github.com/lllyasviel/ControlNet) with [preprocessors](https://github.com/huggingface/controlnet_aux) coming soon!"
+            )
+
+        with gr.TabItem("⚙️ Menu"):
+            with gr.Group():
+                negative_prompt = gr.Textbox(
+                    value="nsfw+",
+                    label="Negative Prompt",
+                    lines=2,
+                )
+
+                with gr.Row():
+                    model = gr.Dropdown(
+                        choices=Config.MODELS,
+                        filterable=False,
+                        value=Config.MODEL,
+                        label="Model",
+                        min_width=240,
+                    )
+                    scheduler = gr.Dropdown(
+                        choices=Config.SCHEDULERS.keys(),
+                        value=Config.SCHEDULER,
+                        elem_id="scheduler",
+                        label="Scheduler",
+                        filterable=False,
+                    )
+
+                with gr.Row():
+                    styles = json.loads(read_file("data/styles.json"))
+                    style_ids = list(styles.keys())
+                    style_ids = [sid for sid in style_ids if not sid.startswith("_")]
+                    style = gr.Dropdown(
+                        value=Config.STYLE,
+                        label="Style",
+                        min_width=240,
+                        choices=[("None", "none")]
+                        + [(styles[sid]["name"], sid) for sid in style_ids],
+                    )
+                    embeddings = gr.Dropdown(
+                        elem_id="embeddings",
+                        label="Embeddings",
+                        choices=[(f"<{e}>", e) for e in Config.EMBEDDINGS],
+                        multiselect=True,
+                        value=[Config.EMBEDDING],
+                        min_width=240,
+                    )
+
+                with gr.Row():
+                    with gr.Group(elem_classes=["gap-0"]):
+                        lora_1 = gr.Dropdown(
                             min_width=240,
+                            label="LoRA #1",
+                            value="none",
                             choices=[("None", "none")]
-                            + [(styles[sid]["name"], sid) for sid in style_ids],
-                        )
-                        embeddings = gr.Dropdown(
-                            elem_id="embeddings",
-                            label="Embeddings",
-                            choices=[(f"<{e}>", e) for e in Config.EMBEDDINGS],
-                            multiselect=True,
-                            value=[Config.EMBEDDING],
-                            min_width=240,
-                        )
-
-                    with gr.Row():
-                        with gr.Group(elem_classes=["gap-0"]):
-                            lora_1 = gr.Dropdown(
-                                min_width=240,
-                                label="LoRA #1",
-                                value="none",
-                                choices=[("None", "none")]
-                                + [
-                                    (lora["name"], lora_id)
-                                    for lora_id, lora in Config.CIVIT_LORAS.items()
-                                ],
-                            )
-                            lora_1_weight = gr.Slider(
-                                value=0.0,
-                                minimum=0.0,
-                                maximum=1.0,
-                                step=0.1,
-                                show_label=False,
-                            )
-                        with gr.Group(elem_classes=["gap-0"]):
-                            lora_2 = gr.Dropdown(
-                                min_width=240,
-                                label="LoRA #2",
-                                value="none",
-                                choices=[("None", "none")]
-                                + [
-                                    (lora["name"], lora_id)
-                                    for lora_id, lora in Config.CIVIT_LORAS.items()
-                                ],
-                            )
-                            lora_2_weight = gr.Slider(
-                                value=0.0,
-                                minimum=0.0,
-                                maximum=1.0,
-                                step=0.1,
-                                show_label=False,
-                            )
-
-                    with gr.Row():
-                        guidance_scale = gr.Slider(
-                            value=Config.GUIDANCE_SCALE,
-                            label="Guidance Scale",
-                            minimum=1.0,
-                            maximum=15.0,
-                            step=0.1,
-                        )
-                        inference_steps = gr.Slider(
-                            value=Config.INFERENCE_STEPS,
-                            label="Inference Steps",
-                            minimum=1,
-                            maximum=50,
-                            step=1,
-                        )
-                        deepcache_interval = gr.Slider(
-                            value=Config.DEEPCACHE_INTERVAL,
-                            label="DeepCache",
-                            minimum=1,
-                            maximum=4,
-                            step=1,
-                        )
-
-                    with gr.Row():
-                        width = gr.Slider(
-                            value=Config.WIDTH,
-                            label="Width",
-                            minimum=256,
-                            maximum=768,
-                            step=32,
-                        )
-                        height = gr.Slider(
-                            value=Config.HEIGHT,
-                            label="Height",
-                            minimum=256,
-                            maximum=768,
-                            step=32,
-                        )
-                        aspect_ratio = gr.Dropdown(
-                            value=f"{Config.WIDTH},{Config.HEIGHT}",
-                            label="Aspect Ratio",
-                            filterable=False,
-                            choices=[
-                                ("Custom", None),
-                                ("4:7 (384x672)", "384,672"),
-                                ("7:9 (448x576)", "448,576"),
-                                ("1:1 (512x512)", "512,512"),
-                                ("9:7 (576x448)", "576,448"),
-                                ("7:4 (672x384)", "672,384"),
+                            + [
+                                (lora["name"], lora_id)
+                                for lora_id, lora in Config.CIVIT_LORAS.items()
                             ],
                         )
-
-                    with gr.Row():
-                        file_format = gr.Dropdown(
-                            choices=["png", "jpeg", "webp"],
-                            label="File Format",
-                            filterable=False,
-                            value="png",
-                        )
-                        num_images = gr.Dropdown(
-                            choices=list(range(1, 5)),
-                            value=Config.NUM_IMAGES,
-                            filterable=False,
-                            label="Images",
-                        )
-                        scale = gr.Dropdown(
-                            choices=[(f"{s}x", s) for s in Config.SCALES],
-                            filterable=False,
-                            value=Config.SCALE,
-                            label="Scale",
-                        )
-                        seed = gr.Number(
-                            value=Config.SEED,
-                            label="Seed",
-                            minimum=-1,
-                            maximum=(2**64) - 1,
-                        )
-
-                    with gr.Row():
-                        use_karras = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Karras σ",
-                            value=True,
-                        )
-                        use_taesd = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Tiny VAE",
-                            value=False,
-                        )
-                        use_freeu = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="FreeU",
-                            value=False,
-                        )
-                        use_clip_skip = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Clip skip",
-                            value=False,
-                        )
-
-            # img2img tab
-            with gr.TabItem("🖼️ Image"):
-                with gr.Group():
-                    with gr.Row():
-                        image_prompt = gr.Image(
-                            show_share_button=False,
-                            label="Initial Image",
-                            min_width=320,
-                            format="png",
-                            type="pil",
-                        )
-                        ip_image_prompt = gr.Image(
-                            show_share_button=False,
-                            label="IP-Adapter Image",
-                            min_width=320,
-                            format="png",
-                            type="pil",
-                        )
-
-                    with gr.Row():
-                        image_select = gr.Dropdown(
-                            info="Use an initial image from the gallery",
-                            choices=[("None", -1)],
-                            label="Gallery Image",
-                            interactive=True,
-                            filterable=False,
-                            value=-1,
-                        )
-                        ip_image_select = gr.Dropdown(
-                            info="Use an IP-Adapter image from the gallery",
-                            label="Gallery Image (IP-Adapter)",
-                            choices=[("None", -1)],
-                            interactive=True,
-                            filterable=False,
-                            value=-1,
-                        )
-
-                    with gr.Row():
-                        denoising_strength = gr.Slider(
-                            value=Config.DENOISING_STRENGTH,
-                            label="Denoising Strength",
+                        lora_1_weight = gr.Slider(
+                            value=0.0,
                             minimum=0.0,
                             maximum=1.0,
                             step=0.1,
+                            show_label=False,
+                        )
+                    with gr.Group(elem_classes=["gap-0"]):
+                        lora_2 = gr.Dropdown(
+                            min_width=240,
+                            label="LoRA #2",
+                            value="none",
+                            choices=[("None", "none")]
+                            + [
+                                (lora["name"], lora_id)
+                                for lora_id, lora in Config.CIVIT_LORAS.items()
+                            ],
+                        )
+                        lora_2_weight = gr.Slider(
+                            value=0.0,
+                            minimum=0.0,
+                            maximum=1.0,
+                            step=0.1,
+                            show_label=False,
                         )
 
-                    with gr.Row():
-                        disable_image = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Disable Initial Image",
-                            value=False,
-                        )
-                        disable_ip_image = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Disable IP-Adapter Image",
-                            value=False,
-                        )
-                        ip_face = gr.Checkbox(
-                            elem_classes=["checkbox"],
-                            label="Use IP-Adapter Face",
-                            value=False,
-                        )
+                with gr.Row():
+                    guidance_scale = gr.Slider(
+                        value=Config.GUIDANCE_SCALE,
+                        label="Guidance Scale",
+                        minimum=1.0,
+                        maximum=15.0,
+                        step=0.1,
+                    )
+                    inference_steps = gr.Slider(
+                        value=Config.INFERENCE_STEPS,
+                        label="Inference Steps",
+                        minimum=1,
+                        maximum=50,
+                        step=1,
+                    )
+                    deepcache_interval = gr.Slider(
+                        value=Config.DEEPCACHE_INTERVAL,
+                        label="DeepCache",
+                        minimum=1,
+                        maximum=4,
+                        step=1,
+                    )
 
-    # Main content
-    with gr.Column(elem_id="content"):
-        with gr.Group():
-            output_images = gr.Gallery(
-                elem_classes=["gallery"],
-                show_share_button=False,
-                object_fit="cover",
-                interactive=False,
-                show_label=False,
-                label="Output",
-                format="png",
-                columns=2,
-            )
-            prompt = gr.Textbox(
-                placeholder="What do you want to see?",
-                autoscroll=False,
-                show_label=False,
-                label="Prompt",
-                max_lines=3,
-                lines=3,
-            )
+                with gr.Row():
+                    width = gr.Slider(
+                        value=Config.WIDTH,
+                        label="Width",
+                        minimum=256,
+                        maximum=768,
+                        step=32,
+                    )
+                    height = gr.Slider(
+                        value=Config.HEIGHT,
+                        label="Height",
+                        minimum=256,
+                        maximum=768,
+                        step=32,
+                    )
+                    aspect_ratio = gr.Dropdown(
+                        value=f"{Config.WIDTH},{Config.HEIGHT}",
+                        label="Aspect Ratio",
+                        filterable=False,
+                        choices=[
+                            ("Custom", None),
+                            ("4:7 (384x672)", "384,672"),
+                            ("7:9 (448x576)", "448,576"),
+                            ("1:1 (512x512)", "512,512"),
+                            ("9:7 (576x448)", "576,448"),
+                            ("7:4 (672x384)", "672,384"),
+                        ],
+                    )
 
-        # Buttons
-        with gr.Row():
-            generate_btn = gr.Button("Generate", variant="primary")
-            random_btn = gr.Button(
-                elem_classes=["icon-button", "popover"],
-                variant="secondary",
-                elem_id="random",
-                min_width=0,
-                value="🎲",
-            )
-            refresh_btn = gr.Button(
-                elem_classes=["icon-button", "popover"],
-                variant="secondary",
-                elem_id="refresh",
-                min_width=0,
-                value="🔄",
-            )
-            clear_btn = gr.ClearButton(
-                elem_classes=["icon-button", "popover"],
-                components=[output_images],
-                variant="secondary",
-                elem_id="clear",
-                min_width=0,
-                value="🗑️",
-            )
+                with gr.Row():
+                    file_format = gr.Dropdown(
+                        choices=["png", "jpeg", "webp"],
+                        label="File Format",
+                        filterable=False,
+                        value="png",
+                    )
+                    num_images = gr.Dropdown(
+                        choices=list(range(1, 5)),
+                        value=Config.NUM_IMAGES,
+                        filterable=False,
+                        label="Images",
+                    )
+                    scale = gr.Dropdown(
+                        choices=[(f"{s}x", s) for s in Config.SCALES],
+                        filterable=False,
+                        value=Config.SCALE,
+                        label="Scale",
+                    )
+                    seed = gr.Number(
+                        value=Config.SEED,
+                        label="Seed",
+                        minimum=-1,
+                        maximum=(2**64) - 1,
+                    )
+
+                with gr.Row():
+                    use_karras = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="Karras σ",
+                        value=True,
+                    )
+                    use_taesd = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="Tiny VAE",
+                        value=False,
+                    )
+                    use_freeu = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="FreeU",
+                        value=False,
+                    )
+                    use_clip_skip = gr.Checkbox(
+                        elem_classes=["checkbox"],
+                        label="Clip skip",
+                        value=False,
+                    )
 
     random_btn.click(random_fn, inputs=[], outputs=[prompt], show_api=False)
 
@@ -513,7 +513,6 @@ with gr.Blocks(
         triggers=[generate_btn.click, prompt.submit],
         fn=generate_fn,
         api_name="generate",
-        concurrency_limit=5,
         outputs=[output_images],
         inputs=[
             prompt,
@@ -568,7 +567,7 @@ if __name__ == "__main__":
         )
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
-    demo.queue().launch(
+    demo.queue(default_concurrency_limit=1).launch(
         server_name=args.server,
         server_port=args.port,
     )

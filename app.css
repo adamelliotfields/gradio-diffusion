@@ -15,9 +15,6 @@
   width: auto;
   margin-right: 4px;
 }
-.accordion .tabitem > div {
-  --block-border-width: 1px;
-}
 
 #embeddings .token {
   border-radius: 4px;
@@ -33,7 +30,7 @@
   overflow-y: auto;
 }
 .gallery, .gallery .grid-wrap {
-  height: calc(100vh - 400px);
+  height: calc(100vh - 422px);
   max-height: none;
 }
 
@@ -43,10 +40,6 @@
 
 .icon-button {
   max-width: 42px;
-}
-
-.image-container {
-  max-height: calc(100vh - 480px);
 }
 
 #intro {
@@ -132,9 +125,11 @@
 }
 .tab-nav {
   margin-bottom: 16px;
+  flex-wrap: nowrap;
 }
 .tab-nav > button {
   padding-bottom: 8px;
+  text-wrap: wrap;
 }
 
 @keyframes spin {
