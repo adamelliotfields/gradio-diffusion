@@ -169,6 +169,8 @@ def generate(
 
     start = time.perf_counter()
     log = Logger("generate")
+    log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}")
+
     loader = Loader()
     loader.load(
         KIND,
@@ -314,7 +316,7 @@ def generate(
             CURRENT_IMAGE += 1
 
     diff = time.perf_counter() - start
-    msg = f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s"
+    msg = f"Generating {len(images)} image{'s' if len(images) > 1 else ''} done in {diff:.2f}s"
     log.info(msg)
     if Info:
         Info(msg)

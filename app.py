@@ -12,8 +12,12 @@ from lib import Config, async_call, download_civit_file, download_repo_files, ge
 
 filterwarnings("ignore", category=FutureWarning, module="diffusers")
 filterwarnings("ignore", category=FutureWarning, module="transformers")
+
 diffusers_logging.set_verbosity_error()
+diffusers_logging.disable_progress_bar()
+
 transformers_logging.set_verbosity_error()
+transformers_logging.disable_progress_bar()
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """

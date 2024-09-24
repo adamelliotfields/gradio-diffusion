@@ -1,4 +1,5 @@
 import gc
+import time
 from threading import Lock
 
 import torch
@@ -145,6 +146,7 @@ class Loader:
         pipeline = Config.PIPELINES[kind]
         if self.pipe is None:
             try:
+                start = time.perf_counter()
                 self.log.info(f"Loading {model}")
                 self.model = model
                 if model.lower() in Config.MODEL_CHECKPOINTS.keys():
@@ -154,6 +156,8 @@ class Loader:
                     ).to("cuda")
                 else:
                     self.pipe = pipeline.from_pretrained(model, **kwargs).to("cuda")
+                diff = time.perf_counter() - start
+                self.log.info(f"Loading {model} done in {diff:.2f}s")
             except Exception as e:
                 self.log.error(f"Error loading {model}: {e}")
                 self.model = None
