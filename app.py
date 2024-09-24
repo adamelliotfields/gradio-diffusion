@@ -109,7 +109,7 @@ async def generate_fn(*args):
             *gen_args,
             Info=gr.Info,
             Error=gr.Error,
-            progress=gr.Progress(),
+            Progress=gr.Progress,
         )
     except RuntimeError:
         raise gr.Error("Error: Please try again")

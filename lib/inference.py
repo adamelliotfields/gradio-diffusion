@@ -3,8 +3,8 @@ import re
 import time
 from datetime import datetime
 from itertools import product
-from typing import Callable
 
+import gradio as gr
 import numpy as np
 import spaces
 import torch
@@ -120,9 +120,10 @@ def generate(
     taesd=False,
     freeu=False,
     clip_skip=False,
-    Info: Callable[[str], None] = None,
+    Info=None,
     Error=Exception,
-    progress=None,
+    Progress=None,
+    progress=gr.Progress(track_tqdm=True),
 ):
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
@@ -147,21 +148,23 @@ def generate(
     else:
         IP_ADAPTER = ""
 
-    if progress is not None:
+    if Progress is not None:
         TQDM = False
-        progress((0, inference_steps), desc=f"Generating image {CURRENT_IMAGE}/{num_images}")
+        progress_bar = Progress()
+        progress_bar((0, inference_steps), desc=f"Generating image {CURRENT_IMAGE}/{num_images}")
     else:
         TQDM = True
+        progress_bar = None
 
     def callback_on_step_end(pipeline, step, timestep, latents):
         nonlocal CURRENT_STEP, CURRENT_IMAGE
-        if progress is None:
+        if Progress is None:
             return latents
         strength = denoising_strength if KIND == "img2img" else 1
         total_steps = min(int(inference_steps * strength), inference_steps)
 
         CURRENT_STEP = step + 1
-        progress(
+        progress_bar(
             (CURRENT_STEP, total_steps),
             desc=f"Generating image {CURRENT_IMAGE}/{num_images}",
         )
