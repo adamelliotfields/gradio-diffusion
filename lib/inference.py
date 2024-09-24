@@ -15,10 +15,8 @@ from PIL import Image
 
 from .config import Config
 from .loader import Loader
+from .logger import Logger
 from .utils import load_json
-
-__import__("warnings").filterwarnings("ignore", category=FutureWarning, module="transformers")
-__import__("transformers").logging.set_verbosity_error()
 
 
 def parse_prompt_with_arrays(prompt: str) -> list[str]:
@@ -170,6 +168,7 @@ def generate(
         return latents
 
     start = time.perf_counter()
+    log = Logger("generate")
     loader = Loader()
     loader.load(
         KIND,
@@ -249,10 +248,9 @@ def generate(
     images = []
     current_seed = seed
     for i in range(num_images):
-        # seeded generator for each iteration
-        generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
-
         try:
+            generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
+
             positive_prompts = parse_prompt_with_arrays(positive_prompt)
             index = i % len(positive_prompts)
             positive_styled, negative_styled = apply_style(
@@ -270,7 +268,6 @@ def generate(
             for embedding in embeddings:
                 negative_styled += f", <{embedding}>"
 
-            # print prompts
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
                 [compel(positive_styled), compel(negative_styled)]
             )
@@ -317,6 +314,8 @@ def generate(
             CURRENT_IMAGE += 1
 
     diff = time.perf_counter() - start
+    msg = f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s"
+    log.info(msg)
     if Info:
-        Info(f"Generated {len(images)} image{'s' if len(images) > 1 else ''} in {diff:.2f}s")
+        Info(msg)
     return images

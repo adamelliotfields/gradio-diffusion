@@ -2,10 +2,18 @@ import argparse
 import json
 import os
 import random
+from warnings import filterwarnings
 
 import gradio as gr
+from diffusers.utils import logging as diffusers_logging
+from transformers import logging as transformers_logging
 
 from lib import Config, async_call, download_civit_file, download_repo_files, generate, read_file
+
+filterwarnings("ignore", category=FutureWarning, module="diffusers")
+filterwarnings("ignore", category=FutureWarning, module="transformers")
+diffusers_logging.set_verbosity_error()
+transformers_logging.set_verbosity_error()
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
 refresh_seed_js = """
