@@ -28,6 +28,14 @@ class Loader:
                 cls._instance.log = Logger("Loader")
         return cls._instance
 
+    def _should_unload_deepcache(self, interval=1):
+        has_deepcache = hasattr(self.pipe, "deepcache")
+        if has_deepcache and interval == 1:
+            return True
+        if has_deepcache and self.pipe.deepcache.params["cache_interval"] != interval:
+            return True
+        return False
+
     def _should_unload_ip_adapter(self, model="", ip_adapter=""):
         # unload if model changed
         if self.model and self.model.lower() != model.lower():
@@ -46,6 +54,13 @@ class Loader:
         if kind == "img2img" and not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
             return True  # img2img -> txt2img
         return False
+
+    def _unload_deepcache(self):
+        if self.pipe.deepcache is None:
+            return
+        self.log.info("Unloading DeepCache")
+        self.pipe.deepcache.disable()
+        delattr(self.pipe, "deepcache")
 
     # https://github.com/huggingface/diffusers/blob/v0.28.0/src/diffusers/loaders/ip_adapter.py#L300
     def _unload_ip_adapter(self):
@@ -79,8 +94,10 @@ class Loader:
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.synchronize()
 
-    def _unload(self, kind="", model="", ip_adapter=""):
+    def _unload(self, kind="", model="", ip_adapter="", deepcache=1):
         to_unload = []
+        if self._should_unload_deepcache(deepcache):
+            self._unload_deepcache()
         if self._should_unload_ip_adapter(model, ip_adapter):
             self._unload_ip_adapter()
             to_unload.append("ip_adapter")
@@ -178,13 +195,12 @@ class Loader:
 
     def _load_deepcache(self, interval=1):
         has_deepcache = hasattr(self.pipe, "deepcache")
+        if not has_deepcache and interval == 1:
+            return
         if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
             return
-        if has_deepcache:
-            self.pipe.deepcache.disable()
-        else:
-            self.log.info("Loading DeepCache")
-            self.pipe.deepcache = DeepCacheSDHelper(pipe=self.pipe)
+        self.log.info("Loading DeepCache")
+        self.pipe.deepcache = DeepCacheSDHelper(self.pipe)
         self.pipe.deepcache.set_params(cache_interval=interval)
         self.pipe.deepcache.enable()
 
@@ -254,7 +270,7 @@ class Loader:
             # defaults to float32
             pipe_kwargs["torch_dtype"] = torch.float16
 
-        self._unload(kind, model, ip_adapter)
+        self._unload(kind, model, ip_adapter, deepcache)
         self._load_pipeline(kind, model, tqdm, **pipe_kwargs)
 
         # error loading model
