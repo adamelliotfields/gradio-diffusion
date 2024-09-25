@@ -10,6 +10,6 @@ httpx
 numpy==1.26.4
 peft
 ruff==0.6.7
-spaces
+spaces==0.30.2
 torch==2.2.0
 torchvision==0.17.0

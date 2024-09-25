@@ -4,7 +4,6 @@ from threading import Lock
 
 import torch
 from DeepCache import DeepCacheSDHelper
-from diffusers import StableDiffusionImg2ImgPipeline, StableDiffusionPipeline
 from diffusers.models import AutoencoderKL, AutoencoderTiny
 from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
 
@@ -50,9 +49,9 @@ class Loader:
             return False
         if self.model.lower() != model.lower():
             return True
-        if kind == "txt2img" and not isinstance(self.pipe, StableDiffusionPipeline):
+        if kind == "txt2img" and not isinstance(self.pipe, Config.PIPELINES["txt2img"]):
             return True  # txt2img -> img2img
-        if kind == "img2img" and not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
+        if kind == "img2img" and not isinstance(self.pipe, Config.PIPELINES["img2img"]):
             return True  # img2img -> txt2img
         return False
 
@@ -69,7 +68,7 @@ class Loader:
             return
 
         self.log.info("Unloading IP-Adapter")
-        if not isinstance(self.pipe, StableDiffusionImg2ImgPipeline):
+        if not isinstance(self.pipe, Config.PIPELINES["img2img"]):
             self.pipe.image_encoder = None
             self.pipe.register_to_config(image_encoder=[None, None])
 
@@ -142,7 +141,13 @@ class Loader:
                 self.log.error(f"Error loading 4x upscaler: {e}")
                 self.upscaler_4x = None
 
-    def _load_pipeline(self, kind, model, tqdm, **kwargs):
+    def _load_pipeline(
+        self,
+        kind,
+        model,
+        progress,
+        **kwargs,
+    ):
         pipeline = Config.PIPELINES[kind]
         if self.pipe is None:
             try:
@@ -152,10 +157,11 @@ class Loader:
                 if model.lower() in Config.MODEL_CHECKPOINTS.keys():
                     self.pipe = pipeline.from_single_file(
                         f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
+                        progress,
                         **kwargs,
                     ).to("cuda")
                 else:
-                    self.pipe = pipeline.from_pretrained(model, **kwargs).to("cuda")
+                    self.pipe = pipeline.from_pretrained(model, progress, **kwargs).to("cuda")
                 diff = time.perf_counter() - start
                 self.log.info(f"Loading {model} done in {diff:.2f}s")
             except Exception as e:
@@ -166,7 +172,7 @@ class Loader:
         if not isinstance(self.pipe, pipeline):
             self.pipe = pipeline.from_pipe(self.pipe).to("cuda")
         if self.pipe is not None:
-            self.pipe.set_progress_bar_config(disable=not tqdm)
+            self.pipe.set_progress_bar_config(disable=progress is not None)
 
     def _load_vae(self, taesd=False, model=""):
         vae_type = type(self.pipe.vae)
@@ -231,7 +237,7 @@ class Loader:
         freeu,
         deepcache,
         scale,
-        tqdm,
+        progress,
     ):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -275,7 +281,7 @@ class Loader:
             pipe_kwargs["torch_dtype"] = torch.float16
 
         self._unload(kind, model, ip_adapter, deepcache)
-        self._load_pipeline(kind, model, tqdm, **pipe_kwargs)
+        self._load_pipeline(kind, model, progress, **pipe_kwargs)
 
         # error loading model
         if self.pipe is None:

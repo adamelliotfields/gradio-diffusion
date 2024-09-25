@@ -1,4 +1,5 @@
 import os
+from importlib import import_module
 from types import SimpleNamespace
 
 from diffusers import (
@@ -8,14 +9,18 @@ from diffusers import (
     EulerAncestralDiscreteScheduler,
     EulerDiscreteScheduler,
     PNDMScheduler,
-    StableDiffusionImg2ImgPipeline,
-    StableDiffusionPipeline,
     UniPCMultistepScheduler,
 )
+
+from .pipelines import CustomStableDiffusionImg2ImgPipeline, CustomStableDiffusionPipeline
+
+# improved GPU handling and progress bars; set before importing spaces
+os.environ["ZEROGPU_V2"] = "true"
 
 Config = SimpleNamespace(
     HF_TOKEN=os.environ.get("HF_TOKEN", None),
     CIVIT_TOKEN=os.environ.get("CIVIT_TOKEN", None),
+    ZERO_GPU=import_module("spaces").config.Config.zero_gpu,
     HF_MODELS={
         "Lykon/dreamshaper-8": [
             "feature_extractor/preprocessor_config.json",
@@ -59,8 +64,8 @@ Config = SimpleNamespace(
         "Noto Color Emoji",
     ],
     PIPELINES={
-        "txt2img": StableDiffusionPipeline,
-        "img2img": StableDiffusionImg2ImgPipeline,
+        "txt2img": CustomStableDiffusionPipeline,
+        "img2img": CustomStableDiffusionImg2ImgPipeline,
     },
     MODEL="Lykon/dreamshaper-8",
     MODELS=[

@@ -4,14 +4,13 @@ import time
 from datetime import datetime
 from itertools import product
 
-import gradio as gr
 import numpy as np
-import spaces
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
 from PIL import Image
+from spaces import GPU
 
 from .config import Config
 from .loader import Loader
@@ -92,7 +91,7 @@ def gpu_duration(**kwargs):
     return loading + (duration * num_images)
 
 
-@spaces.GPU(duration=gpu_duration)
+@GPU(duration=gpu_duration)
 def generate(
     positive_prompt,
     negative_prompt="",
@@ -120,10 +119,9 @@ def generate(
     taesd=False,
     freeu=False,
     clip_skip=False,
-    Info=None,
     Error=Exception,
-    Progress=None,
-    progress=gr.Progress(track_tqdm=True),
+    Info=None,
+    progress=None,
 ):
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
@@ -148,31 +146,26 @@ def generate(
     else:
         IP_ADAPTER = ""
 
-    if Progress is not None:
-        TQDM = False
-        progress_bar = Progress()
-        progress_bar((0, inference_steps), desc=f"Generating image {CURRENT_IMAGE}/{num_images}")
-    else:
-        TQDM = True
-        progress_bar = None
-
+    # custom progress bar for multiple images
     def callback_on_step_end(pipeline, step, timestep, latents):
         nonlocal CURRENT_STEP, CURRENT_IMAGE
-        if Progress is None:
-            return latents
-        strength = denoising_strength if KIND == "img2img" else 1
-        total_steps = min(int(inference_steps * strength), inference_steps)
-
-        CURRENT_STEP = step + 1
-        progress_bar(
-            (CURRENT_STEP, total_steps),
-            desc=f"Generating image {CURRENT_IMAGE}/{num_images}",
-        )
+        if progress is not None:
+            # calculate total steps for img2img based on denoising strength
+            strength = denoising_strength if KIND == "img2img" else 1
+            total_steps = min(int(inference_steps * strength), inference_steps)
+            CURRENT_STEP = step + 1
+            progress(
+                (CURRENT_STEP, total_steps),
+                desc=f"Generating image {CURRENT_IMAGE}/{num_images}",
+            )
         return latents
 
     start = time.perf_counter()
     log = Logger("generate")
     log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}")
+
+    if Config.ZERO_GPU and progress is not None:
+        progress((100, 100), desc="ZeroGPU init")
 
     loader = Loader()
     loader.load(
@@ -185,7 +178,7 @@ def generate(
         freeu,
         deepcache,
         scale,
-        TQDM,
+        progress,
     )
 
     if loader.pipe is None:

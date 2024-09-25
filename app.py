@@ -14,9 +14,9 @@ filterwarnings("ignore", category=FutureWarning, module="diffusers")
 filterwarnings("ignore", category=FutureWarning, module="transformers")
 
 diffusers_logging.set_verbosity_error()
-diffusers_logging.disable_progress_bar()
-
 transformers_logging.set_verbosity_error()
+
+diffusers_logging.disable_progress_bar()
 transformers_logging.disable_progress_bar()
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
@@ -88,7 +88,7 @@ async def random_fn():
     return gr.Textbox(value=random.choice(prompts))
 
 
-async def generate_fn(*args):
+async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
     if len(args) > 0:
         prompt = args[0]
     else:
@@ -104,12 +104,15 @@ async def generate_fn(*args):
         gen_args[3] = None
 
     try:
+        if Config.ZERO_GPU:
+            progress((0, 100), desc="ZeroGPU init")
+
         images = await async_call(
             generate,
             *gen_args,
-            Info=gr.Info,
             Error=gr.Error,
-            Progress=gr.Progress,
+            Info=gr.Info,
+            progress=progress,
         )
     except RuntimeError:
         raise gr.Error("Error: Please try again")

@@ -2,8 +2,19 @@
 # usage: python cli.py 'colorful calico cat artstation'
 import argparse
 import asyncio
+from warnings import filterwarnings
+
+from diffusers.utils import logging as diffusers_logging
+from transformers import logging as transformers_logging
 
 from lib import Config, async_call, generate
+
+filterwarnings("ignore", category=FutureWarning, module="diffusers")
+filterwarnings("ignore", category=FutureWarning, module="transformers")
+
+# reduce verbosity but don't disable progress bars
+diffusers_logging.set_verbosity_error()
+transformers_logging.set_verbosity_error()
 
 
 def save_images(images, filename="image.png"):
