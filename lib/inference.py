@@ -1,3 +1,4 @@
+import gc
 import os
 import re
 import time
@@ -173,11 +174,11 @@ def generate(
         IP_ADAPTER,
         model,
         scheduler,
+        deepcache,
+        scale,
         karras,
         taesd,
         freeu,
-        deepcache,
-        scale,
         progress,
     )
 
@@ -185,12 +186,7 @@ def generate(
         raise Error(f"Error loading {model}")
 
     pipe = loader.pipe
-    upscaler = None
-
-    if scale == 2:
-        upscaler = loader.upscaler_2x
-    if scale == 4:
-        upscaler = loader.upscaler_4x
+    upscaler = loader.upscaler
 
     # load loras
     loras = []
@@ -310,6 +306,10 @@ def generate(
                 pipe.unload_lora_weights()
             CURRENT_STEP = 0
             CURRENT_IMAGE += 1
+
+    # cleanup
+    loader.collect()
+    gc.collect()
 
     diff = time.perf_counter() - start
     msg = f"Generating {len(images)} image{'s' if len(images) > 1 else ''} done in {diff:.2f}s"

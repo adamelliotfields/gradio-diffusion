@@ -266,6 +266,10 @@ class RealESRGAN:
             scale=scale,
         )
 
+    def to(self, device):
+        self.device = device
+        self.model.to(device=device)
+
     def load_weights(self):
         assert self.scale in [2, 4], "You can download models only with scales: 2, 4"
         config = HF_MODELS[self.scale]
@@ -279,9 +283,8 @@ class RealESRGAN:
             self.model.load_state_dict(loadnet, strict=True)
         self.model.eval().to(device=self.device)
 
-    @torch.cuda.amp.autocast()
+    @torch.autocast("cuda")
     def predict(self, lr_image, batch_size=4, patches_size=192, padding=24, pad_size=15):
-        scale = self.scale
         if not isinstance(lr_image, np.ndarray):
             lr_image = np.array(lr_image)
         if lr_image.min() < 0.0:
@@ -302,6 +305,7 @@ class RealESRGAN:
             for i in range(batch_size, image.shape[0], batch_size):
                 res = torch.cat((res, self.model(image[i : i + batch_size])), 0)
 
+        scale = self.scale
         sr_image = einops.rearrange(res.clamp(0, 1), "b c h w -> b h w c").cpu().numpy()
         padded_size_scaled = tuple(np.multiply(p_shape[0:2], scale)) + (3,)
         scaled_image_shape = tuple(np.multiply(lr_image.shape[0:2], scale)) + (3,)

@@ -22,11 +22,15 @@ class Loader:
                 cls._instance = super().__new__(cls)
                 cls._instance.pipe = None
                 cls._instance.model = None
+                cls._instance.upscaler = None
                 cls._instance.ip_adapter = None
-                cls._instance.upscaler_2x = None
-                cls._instance.upscaler_4x = None
                 cls._instance.log = Logger("Loader")
         return cls._instance
+
+    def _should_unload_upscaler(self, scale=1):
+        if self.upscaler is not None and self.upscaler.scale != scale:
+            return True
+        return False
 
     def _should_unload_deepcache(self, interval=1):
         has_deepcache = hasattr(self.pipe, "deepcache")
@@ -55,60 +59,112 @@ class Loader:
             return True  # img2img -> txt2img
         return False
 
+    def _unload_upscaler(self):
+        if self.upscaler is not None:
+            start = time.perf_counter()
+            self.log.info(f"Unloading {self.upscaler.scale}x upscaler")
+            self.upscaler.to("cpu")
+            diff = time.perf_counter() - start
+            self.log.info(f"Unloading {self.upscaler.scale}x upscaler done in {diff:.2f}s")
+
     def _unload_deepcache(self):
-        if self.pipe.deepcache is None:
-            return
-        self.log.info("Unloading DeepCache")
-        self.pipe.deepcache.disable()
-        delattr(self.pipe, "deepcache")
+        if self.pipe.deepcache is not None:
+            self.log.info("Disabling DeepCache")
+            self.pipe.deepcache.disable()
+            delattr(self.pipe, "deepcache")
 
     # https://github.com/huggingface/diffusers/blob/v0.28.0/src/diffusers/loaders/ip_adapter.py#L300
     def _unload_ip_adapter(self):
-        if self.ip_adapter is None:
-            return
+        if self.ip_adapter is not None:
+            start = time.perf_counter()
+            self.log.info("Unloading IP-Adapter")
+            if not isinstance(self.pipe, Config.PIPELINES["img2img"]):
+                self.pipe.image_encoder = None
+                self.pipe.register_to_config(image_encoder=[None, None])
 
-        self.log.info("Unloading IP-Adapter")
-        if not isinstance(self.pipe, Config.PIPELINES["img2img"]):
-            self.pipe.image_encoder = None
-            self.pipe.register_to_config(image_encoder=[None, None])
+            self.pipe.feature_extractor = None
+            self.pipe.unet.encoder_hid_proj = None
+            self.pipe.unet.config.encoder_hid_dim_type = None
+            self.pipe.register_to_config(feature_extractor=[None, None])
 
-        self.pipe.feature_extractor = None
-        self.pipe.unet.encoder_hid_proj = None
-        self.pipe.unet.config.encoder_hid_dim_type = None
-        self.pipe.register_to_config(feature_extractor=[None, None])
+            attn_procs = {}
+            for name, value in self.pipe.unet.attn_processors.items():
+                attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
+                attn_procs[name] = (
+                    attn_processor_class
+                    if isinstance(value, IPAdapterAttnProcessor2_0)
+                    else value.__class__()
+                )
+            self.pipe.unet.set_attn_processor(attn_procs)
+            diff = time.perf_counter() - start
+            self.log.info(f"Unloading IP-Adapter done in {diff:.2f}s")
 
-        attn_procs = {}
-        for name, value in self.pipe.unet.attn_processors.items():
-            attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
-            attn_procs[name] = (
-                attn_processor_class
-                if isinstance(value, IPAdapterAttnProcessor2_0)
-                else value.__class__()
-            )
-        self.pipe.unet.set_attn_processor(attn_procs)
+    def _unload_pipeline(self):
+        if self.pipe is not None:
+            start = time.perf_counter()
+            self.log.info(f"Unloading {self.model}")
+            self.pipe.to("cpu")
+            diff = time.perf_counter() - start
+            self.log.info(f"Unloading {self.model} done in {diff:.2f}s")
 
-    def _flush(self):
-        gc.collect()
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-        torch.cuda.reset_peak_memory_stats()
-        torch.cuda.synchronize()
-
-    def _unload(self, kind="", model="", ip_adapter="", deepcache=1):
+    def _unload(self, kind="", model="", ip_adapter="", deepcache=1, scale=1):
         to_unload = []
-        if self._should_unload_deepcache(deepcache):
+        if self._should_unload_deepcache(deepcache):  # remove deepcache first
             self._unload_deepcache()
+
+        if self._should_unload_upscaler(scale):
+            self._unload_upscaler()
+            to_unload.append("upscaler")
+
         if self._should_unload_ip_adapter(model, ip_adapter):
             self._unload_ip_adapter()
             to_unload.append("ip_adapter")
+
         if self._should_unload_pipeline(kind, model):
+            self._unload_pipeline()
             to_unload.append("model")
             to_unload.append("pipe")
-        for component in to_unload:
-            delattr(self, component)
-        self._flush()
+
+        self.collect()
         for component in to_unload:
             setattr(self, component, None)
+            gc.collect()
+
+    def _load_upscaler(self, scale=1):
+        if self.upscaler is None and scale > 1:
+            try:
+                start = time.perf_counter()
+                self.log.info(f"Loading {scale}x upscaler")
+                self.upscaler = RealESRGAN(scale, device=self.pipe.device)
+                self.upscaler.load_weights()
+                diff = time.perf_counter() - start
+                self.log.info(f"Loading {scale}x upscaler done in {diff:.2f}s")
+            except Exception as e:
+                self.log.error(f"Error loading {scale}x upscaler: {e}")
+                self.upscaler = None
+
+    def _load_deepcache(self, interval=1):
+        has_deepcache = hasattr(self.pipe, "deepcache")
+        if not has_deepcache and interval == 1:
+            return
+        if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
+            return
+        self.log.info("Enabling DeepCache")
+        self.pipe.deepcache = DeepCacheSDHelper(self.pipe)
+        self.pipe.deepcache.set_params(cache_interval=interval)
+        self.pipe.deepcache.enable()
+
+    # https://github.com/ChenyangSi/FreeU
+    def _load_freeu(self, freeu=False):
+        block = self.pipe.unet.up_blocks[0]
+        attrs = ["b1", "b2", "s1", "s2"]
+        has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
+        if has_freeu and not freeu:
+            self.log.info("Disabling FreeU")
+            self.pipe.disable_freeu()
+        elif not has_freeu and freeu:
+            self.log.info("Enabling FreeU")
+            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
     def _load_ip_adapter(self, ip_adapter=""):
         if not self.ip_adapter and ip_adapter:
@@ -121,25 +177,6 @@ class Loader:
             # 50% works the best
             self.pipe.set_ip_adapter_scale(0.5)
             self.ip_adapter = ip_adapter
-
-    # upscalers don't need to be unloaded
-    def _load_upscaler(self, scale=1):
-        if scale == 2 and self.upscaler_2x is None:
-            try:
-                self.log.info("Loading 2x upscaler")
-                self.upscaler_2x = RealESRGAN(2, "cuda")
-                self.upscaler_2x.load_weights()
-            except Exception as e:
-                self.log.error(f"Error loading 2x upscaler: {e}")
-                self.upscaler_2x = None
-        if scale == 4 and self.upscaler_4x is None:
-            try:
-                self.log.info("Loading 4x upscaler")
-                self.upscaler_4x = RealESRGAN(4, "cuda")
-                self.upscaler_4x.load_weights()
-            except Exception as e:
-                self.log.error(f"Error loading 4x upscaler: {e}")
-                self.upscaler_4x = None
 
     def _load_pipeline(
         self,
@@ -203,28 +240,11 @@ class Loader:
                     variant="fp16",
                 ).to(self.pipe.device)
 
-    def _load_deepcache(self, interval=1):
-        has_deepcache = hasattr(self.pipe, "deepcache")
-        if not has_deepcache and interval == 1:
-            return
-        if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
-            return
-        self.log.info("Loading DeepCache")
-        self.pipe.deepcache = DeepCacheSDHelper(self.pipe)
-        self.pipe.deepcache.set_params(cache_interval=interval)
-        self.pipe.deepcache.enable()
-
-    # https://github.com/ChenyangSi/FreeU
-    def _load_freeu(self, freeu=False):
-        block = self.pipe.unet.up_blocks[0]
-        attrs = ["b1", "b2", "s1", "s2"]
-        has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
-        if has_freeu and not freeu:
-            self.log.info("Disabling FreeU")
-            self.pipe.disable_freeu()
-        elif not has_freeu and freeu:
-            self.log.info("Enabling FreeU")
-            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
+    def collect(self):
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.synchronize()
 
     def load(
         self,
@@ -232,11 +252,11 @@ class Loader:
         ip_adapter,
         model,
         scheduler,
+        deepcache,
+        scale,
         karras,
         taesd,
         freeu,
-        deepcache,
-        scale,
         progress,
     ):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
