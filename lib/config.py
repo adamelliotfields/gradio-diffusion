@@ -1,6 +1,8 @@
 import os
 from importlib import import_module
+from importlib.util import find_spec
 from types import SimpleNamespace
+from warnings import filterwarnings
 
 from diffusers import (
     DDIMScheduler,
@@ -11,33 +13,54 @@ from diffusers import (
     PNDMScheduler,
     UniPCMultistepScheduler,
 )
+from diffusers.utils import logging as diffusers_logging
+from transformers import logging as transformers_logging
 
 from .pipelines import CustomStableDiffusionImg2ImgPipeline, CustomStableDiffusionPipeline
 
 # improved GPU handling and progress bars; set before importing spaces
-os.environ["ZEROGPU_V2"] = "true"
+os.environ["ZEROGPU_V2"] = "1"
+
+if find_spec("hf_transfer"):
+    os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+
+filterwarnings("ignore", category=FutureWarning, module="diffusers")
+filterwarnings("ignore", category=FutureWarning, module="transformers")
+
+diffusers_logging.set_verbosity_error()
+transformers_logging.set_verbosity_error()
+
+_sd_files = [
+    "feature_extractor/preprocessor_config.json",
+    "safety_checker/config.json",
+    "scheduler/scheduler_config.json",
+    "text_encoder/config.json",
+    "text_encoder/model.fp16.safetensors",
+    "tokenizer/merges.txt",
+    "tokenizer/special_tokens_map.json",
+    "tokenizer/tokenizer_config.json",
+    "tokenizer/vocab.json",
+    "unet/config.json",
+    "unet/diffusion_pytorch_model.fp16.safetensors",
+    "vae/config.json",
+    "vae/diffusion_pytorch_model.fp16.safetensors",
+    "model_index.json",
+]
 
 Config = SimpleNamespace(
     HF_TOKEN=os.environ.get("HF_TOKEN", None),
     CIVIT_TOKEN=os.environ.get("CIVIT_TOKEN", None),
     ZERO_GPU=import_module("spaces").config.Config.zero_gpu,
     HF_MODELS={
-        "Lykon/dreamshaper-8": [
-            "feature_extractor/preprocessor_config.json",
-            "safety_checker/config.json",
-            "scheduler/scheduler_config.json",
-            "text_encoder/config.json",
-            "text_encoder/model.fp16.safetensors",
-            "tokenizer/merges.txt",
-            "tokenizer/special_tokens_map.json",
-            "tokenizer/tokenizer_config.json",
-            "tokenizer/vocab.json",
-            "unet/config.json",
-            "unet/diffusion_pytorch_model.fp16.safetensors",
-            "vae/config.json",
-            "vae/diffusion_pytorch_model.fp16.safetensors",
-            "model_index.json",
-        ],
+        # downloaded on startup
+        "Lykon/dreamshaper-8": [*_sd_files],
+        "Comfy-Org/stable-diffusion-v1-5-archive": ["v1-5-pruned-emaonly-fp16.safetensors"],
+        "cyberdelia/CyberRealistic": ["CyberRealistic_V5_FP16.safetensors"],
+        "fluently/Fluently-v4": ["Fluently-v4.safetensors"],
+        "Linaqruf/anything-v3-1": ["anything-v3-2.safetensors"],
+        "prompthero/openjourney-v4": ["openjourney-v4.ckpt"],
+        "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
+        "XpucT/Deliberate": ["Deliberate_v6.safetensors"],
     },
     CIVIT_LORAS={
         # https://civitai.com/models/411088?modelVersionId=486099
