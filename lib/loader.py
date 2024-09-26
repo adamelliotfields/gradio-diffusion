@@ -300,7 +300,7 @@ class Loader:
             # defaults to float32
             pipe_kwargs["torch_dtype"] = torch.float16
 
-        self._unload(kind, model, ip_adapter, deepcache)
+        self._unload(kind, model, ip_adapter, deepcache, scale)
         self._load_pipeline(kind, model, progress, **pipe_kwargs)
 
         # error loading model
@@ -323,7 +323,7 @@ class Loader:
                 self.pipe.scheduler = Config.SCHEDULERS[scheduler](**scheduler_kwargs)
 
         self._load_vae(taesd, model)
-        self._load_upscaler(scale)
         self._load_freeu(freeu)
         self._load_deepcache(deepcache)
         self._load_ip_adapter(ip_adapter)
+        self._load_upscaler(scale)
