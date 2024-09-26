@@ -15,23 +15,23 @@
   },
   "anime_josei": {
     "name": "Anime: Josei",
-    "positive": "({prompt}), in a josei anime style, Paradise Kiss, by Ai Yazawa, manga, mature, emotional, sophisticated, soft colors, refined lines, {_base}",
-    "negative": "({prompt}), shonen, shojo, seinen, chibi, dark, gritty, realism, photographic, {_base}"
+    "positive": "({prompt}), in a josei anime style, inspired by Paradise Kiss, by Ai Yazawa, manga, mature, emotional, sophisticated, soft colors, refined lines, {_base}",
+    "negative": "({prompt}), shonen, shoujo, seinen, dark, gritty, realism, photographic, {_base}"
   },
   "anime_seinen": {
     "name": "Anime: Seinen",
-    "positive": "({prompt}), in a seinen anime style, Ghost in the Shell, by Masamune Shirow, manga, adult, mature, dark, gritty, intricate design, dramatic lighting, high contrast, {_base}",
-    "negative": "({prompt}), shonen, shojo, josei, chibi, kawaii, realism, photographic, dull, plain, low contrast, {_base}"
+    "positive": "({prompt}), in a seinen anime style, inspired by Ghost in the Shell, by Masamune Shirow, manga, adult, mature, dark, gritty, intricate design, dramatic lighting, high contrast, {_base}",
+    "negative": "({prompt}), shonen, shoujo, josei, realism, photographic, dull, plain, low contrast, {_base}"
   },
   "anime_shojo": {
-    "name": "Anime: Shojo",
-    "positive": "({prompt}), in a shojo anime style, Sailor Moon, by Naoko Takeuchi, manga, kawaii, romantic, emotional, pastel colors, soft lines, {_base}",
+    "name": "Anime: Shoujo",
+    "positive": "({prompt}), in a shoujo anime style, manga, romantic, emotional, pastel colors, soft lines, {_base}",
     "negative": "({prompt}), shonen, seinen, josei, dark, gritty, realism, photographic, {_base}"
   },
   "anime_shonen": {
     "name": "Anime: Shonen",
-    "positive": "({prompt}), in a shonen anime style, One Piece, by Eiichiro Oda, manga, action, adventure, heroic, youthful, vibrant, high contrast, {_base}",
-    "negative": "({prompt}), shojo, seinen, josei, chibi, kawaii, realism, photographic, dull, plain, monochrome, muted, low contrast, {_base}"
+    "positive": "({prompt}), in a shonen anime style, manga, action, adventure, heroic, youthful, vibrant, high contrast, {_base}",
+    "negative": "({prompt}), shoujo, seinen, josei, realism, photographic, dull, plain, monochrome, muted, low contrast, {_base}"
   },
   "art_deco": {
     "name": "Art Deco",
