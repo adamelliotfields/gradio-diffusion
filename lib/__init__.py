@@ -1,7 +1,7 @@
 from .config import Config
 from .inference import generate
 from .loader import Loader
-from .logger import Logger, log_fn
+from .logger import Logger
 from .upscaler import RealESRGAN
 from .utils import (
     async_call,
@@ -10,6 +10,7 @@ from .utils import (
     download_repo_files,
     enable_progress_bars,
     load_json,
+    progress_bar,
     read_file,
     timer,
 )
@@ -26,7 +27,7 @@ __all__ = [
     "enable_progress_bars",
     "generate",
     "load_json",
-    "log_fn",
+    "progress_bar",
     "read_file",
     "timer",
 ]

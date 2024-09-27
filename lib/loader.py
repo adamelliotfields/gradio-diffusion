@@ -9,7 +9,7 @@ from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttn
 from .config import Config
 from .logger import Logger
 from .upscaler import RealESRGAN
-from .utils import timer
+from .utils import progress_bar, timer
 
 
 class Loader:
@@ -26,6 +26,20 @@ class Loader:
                 cls._instance.ip_adapter = None
                 cls._instance.log = Logger("Loader")
         return cls._instance
+
+    @property
+    def _is_kl_vae(self):
+        if self.pipe is not None:
+            vae_type = type(self.pipe.vae)
+            return issubclass(vae_type, AutoencoderKL)
+        return False
+
+    @property
+    def _is_tiny_vae(self):
+        if self.pipe is not None:
+            vae_type = type(self.pipe.vae)
+            return issubclass(vae_type, AutoencoderTiny)
+        return False
 
     def _should_unload_upscaler(self, scale=1):
         if self.upscaler is not None and self.upscaler.scale != scale:
@@ -119,12 +133,15 @@ class Loader:
             setattr(self, component, None)
             gc.collect()
 
-    def _load_upscaler(self, scale=1):
+    def _load_upscaler(self, scale=1, progress=None):
         if self.upscaler is None and scale > 1:
             try:
-                with timer(f"Loading {scale}x upscaler", logger=self.log.info):
+                msg = f"Loading {scale}x upscaler"
+                # fmt: off
+                with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
                     self.upscaler = RealESRGAN(scale, device=self.pipe.device)
                     self.upscaler.load_weights()
+                # fmt: on
             except Exception as e:
                 self.log.error(f"Error loading {scale}x upscaler: {e}")
                 self.upscaler = None
@@ -152,9 +169,10 @@ class Loader:
             self.log.info("Enabling FreeU")
             self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
-    def _load_ip_adapter(self, ip_adapter=""):
+    def _load_ip_adapter(self, ip_adapter="", progress=None):
         if not self.ip_adapter and ip_adapter:
-            with timer("Loading IP-Adapter", logger=self.log.info):
+            msg = "Loading IP-Adapter"
+            with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
                 self.pipe.load_ip_adapter(
                     "h94/IP-Adapter",
                     subfolder="models",
@@ -194,22 +212,20 @@ class Loader:
         if self.pipe is not None:
             self.pipe.set_progress_bar_config(disable=progress is not None)
 
-    def _load_vae(self, taesd=False, model=""):
-        vae_type = type(self.pipe.vae)
-        is_kl = issubclass(vae_type, AutoencoderKL)
-        is_tiny = issubclass(vae_type, AutoencoderTiny)
-
+    def _load_vae(self, taesd=False, model="", progress=None):
         # by default all models use KL
-        if is_kl and taesd:
-            with timer("Loading Tiny VAE", logger=self.log.info):
+        if self._is_kl_vae and taesd:
+            msg = "Loading Tiny VAE"
+            with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
                 self.pipe.vae = AutoencoderTiny.from_pretrained(
                     pretrained_model_name_or_path="madebyollin/taesd",
                     torch_dtype=self.pipe.dtype,
                 ).to(self.pipe.device)
             return
 
-        if is_tiny and not taesd:
-            with timer("Loading KL VAE", logger=self.log.info):
+        if self._is_tiny_vae and not taesd:
+            msg = "Loading KL VAE"
+            with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
                 if model.lower() in Config.MODEL_CHECKPOINTS.keys():
                     self.pipe.vae = AutoencoderKL.from_single_file(
                         f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
@@ -305,8 +321,8 @@ class Loader:
             if not same_scheduler or not same_karras:
                 self.pipe.scheduler = Config.SCHEDULERS[scheduler](**scheduler_kwargs)
 
-        self._load_vae(taesd, model)
+        self._load_vae(taesd, model, progress)
         self._load_freeu(freeu)
         self._load_deepcache(deepcache)
-        self._load_ip_adapter(ip_adapter)
-        self._load_upscaler(scale)
+        self._load_ip_adapter(ip_adapter, progress)
+        self._load_upscaler(scale, progress)

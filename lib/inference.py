@@ -16,7 +16,7 @@ from spaces import GPU
 from .config import Config
 from .loader import Loader
 from .logger import Logger
-from .utils import load_json
+from .utils import load_json, progress_bar, timer
 
 
 def parse_prompt_with_arrays(prompt: str) -> list[str]:
@@ -193,20 +193,26 @@ def generate(
     weights = []
     loras_and_weights = [(lora_1, lora_1_weight), (lora_2, lora_2_weight)]
     loras_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "loras"))
-    for lora, weight in loras_and_weights:
-        if lora and lora.lower() != "none" and lora not in loras:
-            config = Config.CIVIT_LORAS.get(lora)
-            if config:
-                try:
-                    pipe.load_lora_weights(
-                        loras_dir,
-                        adapter_name=lora,
-                        weight_name=f"{lora}.{config['model_version_id']}.safetensors",
-                    )
-                    weights.append(weight)
-                    loras.append(lora)
-                except Exception:
-                    raise Error(f"Error loading {config['name']} LoRA")
+    total_loras = sum(1 for lora, _ in loras_and_weights if lora and lora.lower() != "none")
+    desc_loras = "Loading LoRAs"
+    if total_loras > 0:
+        with timer(f"Loading {total_loras} LoRA{'s' if total_loras > 1 else ''}"):
+            progress((0, total_loras), desc=desc_loras)
+            for i, (lora, weight) in enumerate(loras_and_weights):
+                if lora and lora.lower() != "none" and lora not in loras:
+                    config = Config.CIVIT_LORAS.get(lora)
+                    if config:
+                        try:
+                            pipe.load_lora_weights(
+                                loras_dir,
+                                adapter_name=lora,
+                                weight_name=f"{lora}.{config['model_version_id']}.safetensors",
+                            )
+                            weights.append(weight)
+                            loras.append(lora)
+                            progress((i + 1, total_loras), desc=desc_loras)
+                        except Exception:
+                            raise Error(f"Error loading {config['name']} LoRA")
 
     # unload after generating or if there was an error
     try:
@@ -294,7 +300,9 @@ def generate(
         try:
             image = pipe(**kwargs).images[0]
             if scale > 1:
-                image = upscaler.predict(image)
+                msg = f"Upscaling {scale}x"
+                with timer(msg, logger=log.info), progress_bar(100, desc=msg, progress=progress):
+                    image = upscaler.predict(image)
             images.append((image, str(current_seed)))
             current_seed += 1
         except Exception as e:

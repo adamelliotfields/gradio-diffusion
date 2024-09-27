@@ -1,5 +1,4 @@
 import logging
-from functools import wraps
 from threading import Lock
 
 
@@ -54,20 +53,3 @@ class Logger:
 
     def critical(self, message, **kwargs):
         self._log(logging.CRITICAL, message, **kwargs)
-
-
-# decorator for logging function calls
-def log_fn(name=None):
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            log = Logger(name or fn.__name__)
-            log.info("begin")
-            result = fn(*args, **kwargs)
-            log.info("end")
-
-            return result
-
-        return wrapper
-
-    return decorator
