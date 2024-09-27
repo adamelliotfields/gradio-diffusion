@@ -2,6 +2,8 @@ import functools
 import inspect
 import json
 import os
+import time
+from contextlib import contextmanager
 from typing import Callable, TypeVar
 
 import anyio
@@ -21,7 +23,16 @@ P = ParamSpec("P")
 MAX_CONCURRENT_THREADS = 1
 MAX_THREADS_GUARD = Semaphore(MAX_CONCURRENT_THREADS)
 
-log = Logger("utils")
+
+@contextmanager
+def timer(message="Operation", logger=print):
+    start = time.perf_counter()
+    logger(message)
+    try:
+        yield
+    finally:
+        end = time.perf_counter()
+        logger(f"{message} took {end - start:.2f}s")
 
 
 @functools.lru_cache()
@@ -66,6 +77,7 @@ def download_repo_files(repo_id, allow_patterns, token=None):
 def download_civit_file(lora_id, version_id, file_path=".", token=None):
     base_url = "https://civitai.com/api/download/models"
     file = f"{file_path}/{lora_id}.{version_id}.safetensors"
+    log = Logger("download_civit_file")
 
     if os.path.exists(file):
         return

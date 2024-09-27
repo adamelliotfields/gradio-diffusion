@@ -124,6 +124,13 @@ def generate(
     Info=None,
     progress=None,
 ):
+    start = time.perf_counter()
+    log = Logger("generate")
+    log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}")
+
+    if Config.ZERO_GPU and progress is not None:
+        progress((100, 100), desc="ZeroGPU init")
+
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
 
@@ -160,13 +167,6 @@ def generate(
                 desc=f"Generating image {CURRENT_IMAGE}/{num_images}",
             )
         return latents
-
-    start = time.perf_counter()
-    log = Logger("generate")
-    log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}")
-
-    if Config.ZERO_GPU and progress is not None:
-        progress((100, 100), desc="ZeroGPU init")
 
     loader = Loader()
     loader.load(
@@ -311,8 +311,8 @@ def generate(
     loader.collect()
     gc.collect()
 
-    diff = time.perf_counter() - start
-    msg = f"Generating {len(images)} image{'s' if len(images) > 1 else ''} done in {diff:.2f}s"
+    end = time.perf_counter()
+    msg = f"Generating {len(images)} image{'s' if len(images) > 1 else ''} took {end - start:.2f}s"
     log.info(msg)
     if Info:
         Info(msg)

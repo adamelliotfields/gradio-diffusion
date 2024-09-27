@@ -1,5 +1,4 @@
 import gc
-import time
 from threading import Lock
 
 import torch
@@ -10,6 +9,7 @@ from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttn
 from .config import Config
 from .logger import Logger
 from .upscaler import RealESRGAN
+from .utils import timer
 
 
 class Loader:
@@ -61,11 +61,8 @@ class Loader:
 
     def _unload_upscaler(self):
         if self.upscaler is not None:
-            start = time.perf_counter()
-            self.log.info(f"Unloading {self.upscaler.scale}x upscaler")
-            self.upscaler.to("cpu")
-            diff = time.perf_counter() - start
-            self.log.info(f"Unloading {self.upscaler.scale}x upscaler done in {diff:.2f}s")
+            with timer(f"Unloading {self.upscaler.scale}x upscaler", logger=self.log.info):
+                self.upscaler.to("cpu")
 
     def _unload_deepcache(self):
         if self.pipe.deepcache is not None:
@@ -73,39 +70,31 @@ class Loader:
             self.pipe.deepcache.disable()
             delattr(self.pipe, "deepcache")
 
-    # https://github.com/huggingface/diffusers/blob/v0.28.0/src/diffusers/loaders/ip_adapter.py#L300
+    # Copied from https://github.com/huggingface/diffusers/blob/v0.28.0/src/diffusers/loaders/ip_adapter.py#L300
     def _unload_ip_adapter(self):
         if self.ip_adapter is not None:
-            start = time.perf_counter()
-            self.log.info("Unloading IP-Adapter")
-            if not isinstance(self.pipe, Config.PIPELINES["img2img"]):
-                self.pipe.image_encoder = None
-                self.pipe.register_to_config(image_encoder=[None, None])
-
-            self.pipe.feature_extractor = None
-            self.pipe.unet.encoder_hid_proj = None
-            self.pipe.unet.config.encoder_hid_dim_type = None
-            self.pipe.register_to_config(feature_extractor=[None, None])
-
-            attn_procs = {}
-            for name, value in self.pipe.unet.attn_processors.items():
-                attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
-                attn_procs[name] = (
-                    attn_processor_class
-                    if isinstance(value, IPAdapterAttnProcessor2_0)
-                    else value.__class__()
-                )
-            self.pipe.unet.set_attn_processor(attn_procs)
-            diff = time.perf_counter() - start
-            self.log.info(f"Unloading IP-Adapter done in {diff:.2f}s")
+            with timer("Unloading IP-Adapter", logger=self.log.info):
+                if not isinstance(self.pipe, Config.PIPELINES["img2img"]):
+                    self.pipe.image_encoder = None
+                    self.pipe.register_to_config(image_encoder=[None, None])
+                self.pipe.feature_extractor = None
+                self.pipe.unet.encoder_hid_proj = None
+                self.pipe.unet.config.encoder_hid_dim_type = None
+                self.pipe.register_to_config(feature_extractor=[None, None])
+                attn_procs = {}
+                for name, value in self.pipe.unet.attn_processors.items():
+                    attn_processor_class = AttnProcessor2_0()  # raises if not torch 2
+                    attn_procs[name] = (
+                        attn_processor_class
+                        if isinstance(value, IPAdapterAttnProcessor2_0)
+                        else value.__class__()
+                    )
+                self.pipe.unet.set_attn_processor(attn_procs)
 
     def _unload_pipeline(self):
         if self.pipe is not None:
-            start = time.perf_counter()
-            self.log.info(f"Unloading {self.model}")
-            self.pipe.to("cpu")
-            diff = time.perf_counter() - start
-            self.log.info(f"Unloading {self.model} done in {diff:.2f}s")
+            with timer(f"Unloading {self.model}", logger=self.log.info):
+                self.pipe.to("cpu")
 
     def _unload(self, kind="", model="", ip_adapter="", deepcache=1, scale=1):
         to_unload = []
@@ -133,12 +122,9 @@ class Loader:
     def _load_upscaler(self, scale=1):
         if self.upscaler is None and scale > 1:
             try:
-                start = time.perf_counter()
-                self.log.info(f"Loading {scale}x upscaler")
-                self.upscaler = RealESRGAN(scale, device=self.pipe.device)
-                self.upscaler.load_weights()
-                diff = time.perf_counter() - start
-                self.log.info(f"Loading {scale}x upscaler done in {diff:.2f}s")
+                with timer(f"Loading {scale}x upscaler", logger=self.log.info):
+                    self.upscaler = RealESRGAN(scale, device=self.pipe.device)
+                    self.upscaler.load_weights()
             except Exception as e:
                 self.log.error(f"Error loading {scale}x upscaler: {e}")
                 self.upscaler = None
@@ -168,15 +154,15 @@ class Loader:
 
     def _load_ip_adapter(self, ip_adapter=""):
         if not self.ip_adapter and ip_adapter:
-            self.log.info(f"Loading IP-Adapter: {ip_adapter}")
-            self.pipe.load_ip_adapter(
-                "h94/IP-Adapter",
-                subfolder="models",
-                weight_name=f"ip-adapter-{ip_adapter}_sd15.safetensors",
-            )
-            # 50% works the best
-            self.pipe.set_ip_adapter_scale(0.5)
-            self.ip_adapter = ip_adapter
+            with timer("Loading IP-Adapter", logger=self.log.info):
+                self.pipe.load_ip_adapter(
+                    "h94/IP-Adapter",
+                    subfolder="models",
+                    weight_name=f"ip-adapter-{ip_adapter}_sd15.safetensors",
+                )
+                # 50% works the best
+                self.pipe.set_ip_adapter_scale(0.5)
+                self.ip_adapter = ip_adapter
 
     def _load_pipeline(
         self,
@@ -188,19 +174,16 @@ class Loader:
         pipeline = Config.PIPELINES[kind]
         if self.pipe is None:
             try:
-                start = time.perf_counter()
-                self.log.info(f"Loading {model}")
-                self.model = model
-                if model.lower() in Config.MODEL_CHECKPOINTS.keys():
-                    self.pipe = pipeline.from_single_file(
-                        f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
-                        progress,
-                        **kwargs,
-                    ).to("cuda")
-                else:
-                    self.pipe = pipeline.from_pretrained(model, progress, **kwargs).to("cuda")
-                diff = time.perf_counter() - start
-                self.log.info(f"Loading {model} done in {diff:.2f}s")
+                with timer(f"Loading {model} ({kind})", logger=self.log.info):
+                    self.model = model
+                    if model.lower() in Config.MODEL_CHECKPOINTS.keys():
+                        self.pipe = pipeline.from_single_file(
+                            f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
+                            progress,
+                            **kwargs,
+                        ).to("cuda")
+                    else:
+                        self.pipe = pipeline.from_pretrained(model, progress, **kwargs).to("cuda")
             except Exception as e:
                 self.log.error(f"Error loading {model}: {e}")
                 self.model = None
@@ -218,27 +201,27 @@ class Loader:
 
         # by default all models use KL
         if is_kl and taesd:
-            self.log.info("Switching to Tiny VAE")
-            self.pipe.vae = AutoencoderTiny.from_pretrained(
-                pretrained_model_name_or_path="madebyollin/taesd",
-                torch_dtype=self.pipe.dtype,
-            ).to(self.pipe.device)
+            with timer("Loading Tiny VAE", logger=self.log.info):
+                self.pipe.vae = AutoencoderTiny.from_pretrained(
+                    pretrained_model_name_or_path="madebyollin/taesd",
+                    torch_dtype=self.pipe.dtype,
+                ).to(self.pipe.device)
             return
 
         if is_tiny and not taesd:
-            self.log.info("Switching to KL VAE")
-            if model.lower() in Config.MODEL_CHECKPOINTS.keys():
-                self.pipe.vae = AutoencoderKL.from_single_file(
-                    f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
-                    torch_dtype=self.pipe.dtype,
-                ).to(self.pipe.device)
-            else:
-                self.pipe.vae = AutoencoderKL.from_pretrained(
-                    pretrained_model_name_or_path=model,
-                    torch_dtype=self.pipe.dtype,
-                    subfolder="vae",
-                    variant="fp16",
-                ).to(self.pipe.device)
+            with timer("Loading KL VAE", logger=self.log.info):
+                if model.lower() in Config.MODEL_CHECKPOINTS.keys():
+                    self.pipe.vae = AutoencoderKL.from_single_file(
+                        f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
+                        torch_dtype=self.pipe.dtype,
+                    ).to(self.pipe.device)
+                else:
+                    self.pipe.vae = AutoencoderKL.from_pretrained(
+                        pretrained_model_name_or_path=model,
+                        torch_dtype=self.pipe.dtype,
+                        subfolder="vae",
+                        variant="fp16",
+                    ).to(self.pipe.device)
 
     def collect(self):
         torch.cuda.empty_cache()
@@ -316,7 +299,7 @@ class Loader:
         # same model, different scheduler
         if self.model.lower() == model.lower():
             if not same_scheduler:
-                self.log.info(f"Switching to {scheduler}")
+                self.log.info(f"Enabling {scheduler} scheduler")
             if not same_karras:
                 self.log.info(f"{'Enabling' if karras else 'Disabling'} Karras sigmas")
             if not same_scheduler or not same_karras:
