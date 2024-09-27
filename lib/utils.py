@@ -35,17 +35,6 @@ def timer(message="Operation", logger=print):
         logger(f"{message} took {end - start:.2f}s")
 
 
-@contextmanager
-def progress_bar(total, desc="Loading", progress=None):
-    if progress is None:
-        yield
-    try:
-        progress((0, total), desc=desc)
-        yield
-    finally:
-        progress((total, total), desc=desc)
-
-
 @functools.lru_cache()
 def load_json(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as file:

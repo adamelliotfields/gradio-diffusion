@@ -10,7 +10,6 @@ from .utils import (
     download_repo_files,
     enable_progress_bars,
     load_json,
-    progress_bar,
     read_file,
     timer,
 )
@@ -27,7 +26,6 @@ __all__ = [
     "enable_progress_bars",
     "generate",
     "load_json",
-    "progress_bar",
     "read_file",
     "timer",
 ]

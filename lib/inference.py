@@ -16,7 +16,7 @@ from spaces import GPU
 from .config import Config
 from .loader import Loader
 from .logger import Logger
-from .utils import load_json, progress_bar, timer
+from .utils import load_json, timer
 
 
 def parse_prompt_with_arrays(prompt: str) -> list[str]:
@@ -301,8 +301,10 @@ def generate(
             image = pipe(**kwargs).images[0]
             if scale > 1:
                 msg = f"Upscaling {scale}x"
-                with timer(msg, logger=log.info), progress_bar(100, desc=msg, progress=progress):
+                with timer(msg, logger=log.info):
+                    progress((0, 100), desc=msg)
                     image = upscaler.predict(image)
+                    progress((100, 100), desc=msg)
             images.append((image, str(current_seed)))
             current_seed += 1
         except Exception as e:

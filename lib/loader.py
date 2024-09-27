@@ -9,7 +9,7 @@ from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttn
 from .config import Config
 from .logger import Logger
 from .upscaler import RealESRGAN
-from .utils import progress_bar, timer
+from .utils import timer
 
 
 class Loader:
@@ -39,6 +39,14 @@ class Loader:
         if self.pipe is not None:
             vae_type = type(self.pipe.vae)
             return issubclass(vae_type, AutoencoderTiny)
+        return False
+
+    @property
+    def _has_freeu(self):
+        if self.pipe is not None:
+            attrs = ["b1", "b2", "s1", "s2"]
+            block = self.pipe.unet.up_blocks[0]
+            return all(getattr(block, attr, None) is not None for attr in attrs)
         return False
 
     def _should_unload_upscaler(self, scale=1):
@@ -84,6 +92,11 @@ class Loader:
             self.pipe.deepcache.disable()
             delattr(self.pipe, "deepcache")
 
+    def _unload_freeu(self, freeu=False):
+        if self._has_freeu and not freeu:
+            self.log.info("Disabling FreeU")
+            self.pipe.disable_freeu()
+
     # Copied from https://github.com/huggingface/diffusers/blob/v0.28.0/src/diffusers/loaders/ip_adapter.py#L300
     def _unload_ip_adapter(self):
         if self.ip_adapter is not None:
@@ -110,10 +123,13 @@ class Loader:
             with timer(f"Unloading {self.model}", logger=self.log.info):
                 self.pipe.to("cpu")
 
-    def _unload(self, kind="", model="", ip_adapter="", deepcache=1, scale=1):
+    def _unload(self, kind="", model="", ip_adapter="", deepcache=1, scale=1, freeu=False):
         to_unload = []
         if self._should_unload_deepcache(deepcache):  # remove deepcache first
             self._unload_deepcache()
+
+        if self._has_freeu and not freeu:
+            self._unload_freeu()
 
         if self._should_unload_upscaler(scale):
             self._unload_upscaler()
@@ -133,12 +149,35 @@ class Loader:
             setattr(self, component, None)
             gc.collect()
 
-    def _load_upscaler(self, scale=1, progress=None):
+    def _should_load_upscaler(self, scale=1):
         if self.upscaler is None and scale > 1:
+            return True
+        return False
+
+    def _should_load_deepcache(self, interval=1):
+        has_deepcache = hasattr(self.pipe, "deepcache")
+        if not has_deepcache and interval != 1:
+            return True
+        if has_deepcache and self.pipe.deepcache.params["cache_interval"] != interval:
+            return True
+        return False
+
+    def _should_load_ip_adapter(self, ip_adapter=""):
+        if not self.ip_adapter and ip_adapter:
+            return True
+        return False
+
+    def _should_load_pipeline(self):
+        if self.pipe is None:
+            return True
+        return False
+
+    def _load_upscaler(self, scale=1):
+        if self._should_load_upscaler(scale):
             try:
                 msg = f"Loading {scale}x upscaler"
                 # fmt: off
-                with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
+                with timer(msg, logger=self.log.info):
                     self.upscaler = RealESRGAN(scale, device=self.pipe.device)
                     self.upscaler.load_weights()
                 # fmt: on
@@ -147,32 +186,22 @@ class Loader:
                 self.upscaler = None
 
     def _load_deepcache(self, interval=1):
-        has_deepcache = hasattr(self.pipe, "deepcache")
-        if not has_deepcache and interval == 1:
-            return
-        if has_deepcache and self.pipe.deepcache.params["cache_interval"] == interval:
-            return
-        self.log.info("Enabling DeepCache")
-        self.pipe.deepcache = DeepCacheSDHelper(self.pipe)
-        self.pipe.deepcache.set_params(cache_interval=interval)
-        self.pipe.deepcache.enable()
+        if self._should_load_deepcache(interval):
+            self.log.info("Enabling DeepCache")
+            self.pipe.deepcache = DeepCacheSDHelper(self.pipe)
+            self.pipe.deepcache.set_params(cache_interval=interval)
+            self.pipe.deepcache.enable()
 
     # https://github.com/ChenyangSi/FreeU
     def _load_freeu(self, freeu=False):
-        block = self.pipe.unet.up_blocks[0]
-        attrs = ["b1", "b2", "s1", "s2"]
-        has_freeu = all(getattr(block, attr, None) is not None for attr in attrs)
-        if has_freeu and not freeu:
-            self.log.info("Disabling FreeU")
-            self.pipe.disable_freeu()
-        elif not has_freeu and freeu:
+        if not self._has_freeu and freeu:
             self.log.info("Enabling FreeU")
             self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
-    def _load_ip_adapter(self, ip_adapter="", progress=None):
-        if not self.ip_adapter and ip_adapter:
+    def _load_ip_adapter(self, ip_adapter=""):
+        if self._should_load_ip_adapter(ip_adapter):
             msg = "Loading IP-Adapter"
-            with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
+            with timer(msg, logger=self.log.info):
                 self.pipe.load_ip_adapter(
                     "h94/IP-Adapter",
                     subfolder="models",
@@ -190,7 +219,7 @@ class Loader:
         **kwargs,
     ):
         pipeline = Config.PIPELINES[kind]
-        if self.pipe is None:
+        if self._should_load_pipeline():
             try:
                 with timer(f"Loading {model} ({kind})", logger=self.log.info):
                     self.model = model
@@ -212,11 +241,11 @@ class Loader:
         if self.pipe is not None:
             self.pipe.set_progress_bar_config(disable=progress is not None)
 
-    def _load_vae(self, taesd=False, model="", progress=None):
+    def _load_vae(self, taesd=False, model=""):
         # by default all models use KL
         if self._is_kl_vae and taesd:
             msg = "Loading Tiny VAE"
-            with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
+            with timer(msg, logger=self.log.info):
                 self.pipe.vae = AutoencoderTiny.from_pretrained(
                     pretrained_model_name_or_path="madebyollin/taesd",
                     torch_dtype=self.pipe.dtype,
@@ -225,7 +254,7 @@ class Loader:
 
         if self._is_tiny_vae and not taesd:
             msg = "Loading KL VAE"
-            with timer(msg, logger=self.log.info), progress_bar(100, desc=msg, progress=progress):
+            with timer(msg, logger=self.log.info):
                 if model.lower() in Config.MODEL_CHECKPOINTS.keys():
                     self.pipe.vae = AutoencoderKL.from_single_file(
                         f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
@@ -299,7 +328,7 @@ class Loader:
             # defaults to float32
             pipe_kwargs["torch_dtype"] = torch.float16
 
-        self._unload(kind, model, ip_adapter, deepcache, scale)
+        self._unload(kind, model, ip_adapter, deepcache, scale, freeu)
         self._load_pipeline(kind, model, progress, **pipe_kwargs)
 
         # error loading model
@@ -321,8 +350,35 @@ class Loader:
             if not same_scheduler or not same_karras:
                 self.pipe.scheduler = Config.SCHEDULERS[scheduler](**scheduler_kwargs)
 
-        self._load_vae(taesd, model, progress)
-        self._load_freeu(freeu)
-        self._load_deepcache(deepcache)
-        self._load_ip_adapter(ip_adapter, progress)
-        self._load_upscaler(scale, progress)
+        CURRENT_STEP = 1
+        TOTAL_STEPS = sum(
+            [
+                self._is_kl_vae and taesd,
+                self._is_tiny_vae and not taesd,
+                not self._has_freeu and freeu,
+                self._should_load_deepcache(deepcache),
+                self._should_load_ip_adapter(ip_adapter),
+                self._should_load_upscaler(scale),
+            ]
+        )
+
+        msg = "Loading additional features"
+        if self._is_kl_vae and taesd or self._is_tiny_vae and not taesd:
+            self._load_vae(taesd, model)
+            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            CURRENT_STEP += 1
+        if not self._has_freeu and freeu:
+            self._load_freeu(freeu)
+            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            CURRENT_STEP += 1
+        if self._should_load_deepcache(deepcache):
+            self._load_deepcache(deepcache)
+            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            CURRENT_STEP += 1
+        if self._should_load_ip_adapter(ip_adapter):
+            self._load_ip_adapter(ip_adapter)
+            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            CURRENT_STEP += 1
+        if self._should_load_upscaler(scale):
+            self._load_upscaler(scale)
+            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
