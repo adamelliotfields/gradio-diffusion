@@ -58,6 +58,11 @@ def enable_progress_bars():
     diffusers_logging.enable_progress_bar()
 
 
+def safe_progress(progress, current=0, total=0, desc=""):
+    if progress is not None:
+        progress((current, total), desc=desc)
+
+
 def download_repo_files(repo_id, allow_patterns, token=None):
     was_disabled = are_progress_bars_disabled()
     enable_progress_bars()

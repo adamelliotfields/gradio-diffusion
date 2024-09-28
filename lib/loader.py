@@ -9,7 +9,7 @@ from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttn
 from .config import Config
 from .logger import Logger
 from .upscaler import RealESRGAN
-from .utils import timer
+from .utils import safe_progress, timer
 
 
 class Loader:
@@ -59,6 +59,11 @@ class Loader:
         if has_deepcache and interval == 1:
             return True
         if has_deepcache and self.pipe.deepcache.params["cache_interval"] != interval:
+            return True
+        return False
+
+    def _should_unload_freeu(self, freeu=False):
+        if self._has_freeu and not freeu:
             return True
         return False
 
@@ -128,7 +133,7 @@ class Loader:
         if self._should_unload_deepcache(deepcache):  # remove deepcache first
             self._unload_deepcache()
 
-        if self._has_freeu and not freeu:
+        if self._should_unload_freeu(freeu):
             self._unload_freeu()
 
         if self._should_unload_upscaler(scale):
@@ -154,6 +159,11 @@ class Loader:
             return True
         return False
 
+    def _should_load_freeu(self, freeu=False):
+        if not self._has_freeu and freeu:
+            return True
+        return False
+
     def _should_load_deepcache(self, interval=1):
         has_deepcache = hasattr(self.pipe, "deepcache")
         if not has_deepcache and interval != 1:
@@ -176,11 +186,9 @@ class Loader:
         if self._should_load_upscaler(scale):
             try:
                 msg = f"Loading {scale}x upscaler"
-                # fmt: off
                 with timer(msg, logger=self.log.info):
                     self.upscaler = RealESRGAN(scale, device=self.pipe.device)
                     self.upscaler.load_weights()
-                # fmt: on
             except Exception as e:
                 self.log.error(f"Error loading {scale}x upscaler: {e}")
                 self.upscaler = None
@@ -194,7 +202,7 @@ class Loader:
 
     # https://github.com/ChenyangSi/FreeU
     def _load_freeu(self, freeu=False):
-        if not self._has_freeu and freeu:
+        if self._should_load_freeu(freeu):
             self.log.info("Enabling FreeU")
             self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
@@ -355,30 +363,34 @@ class Loader:
             [
                 self._is_kl_vae and taesd,
                 self._is_tiny_vae and not taesd,
-                not self._has_freeu and freeu,
+                self._should_load_freeu(freeu),
                 self._should_load_deepcache(deepcache),
                 self._should_load_ip_adapter(ip_adapter),
                 self._should_load_upscaler(scale),
             ]
         )
 
-        msg = "Loading additional features"
-        if self._is_kl_vae and taesd or self._is_tiny_vae and not taesd:
-            self._load_vae(taesd, model)
-            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
-            CURRENT_STEP += 1
+        desc = "Configuring pipeline"
         if not self._has_freeu and freeu:
             self._load_freeu(freeu)
-            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
             CURRENT_STEP += 1
+
         if self._should_load_deepcache(deepcache):
             self._load_deepcache(deepcache)
-            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
             CURRENT_STEP += 1
+
         if self._should_load_ip_adapter(ip_adapter):
             self._load_ip_adapter(ip_adapter)
-            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
             CURRENT_STEP += 1
+
         if self._should_load_upscaler(scale):
             self._load_upscaler(scale)
-            progress((CURRENT_STEP, TOTAL_STEPS), desc=msg)
+            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
+            CURRENT_STEP += 1
+
+        if self._is_kl_vae and taesd or self._is_tiny_vae and not taesd:
+            self._load_vae(taesd, model)
+            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)

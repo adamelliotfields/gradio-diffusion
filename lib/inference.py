@@ -16,7 +16,7 @@ from spaces import GPU
 from .config import Config
 from .loader import Loader
 from .logger import Logger
-from .utils import load_json, timer
+from .utils import load_json, safe_progress, timer
 
 
 def parse_prompt_with_arrays(prompt: str) -> list[str]:
@@ -128,8 +128,8 @@ def generate(
     log = Logger("generate")
     log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}")
 
-    if Config.ZERO_GPU and progress is not None:
-        progress((100, 100), desc="ZeroGPU init")
+    if Config.ZERO_GPU:
+        safe_progress(progress, 100, 100, "ZeroGPU init")
 
     if not torch.cuda.is_available():
         raise Error("CUDA not available")
@@ -197,7 +197,7 @@ def generate(
     desc_loras = "Loading LoRAs"
     if total_loras > 0:
         with timer(f"Loading {total_loras} LoRA{'s' if total_loras > 1 else ''}"):
-            progress((0, total_loras), desc=desc_loras)
+            safe_progress(progress, 0, total_loras, desc_loras)
             for i, (lora, weight) in enumerate(loras_and_weights):
                 if lora and lora.lower() != "none" and lora not in loras:
                     config = Config.CIVIT_LORAS.get(lora)
@@ -210,7 +210,7 @@ def generate(
                             )
                             weights.append(weight)
                             loras.append(lora)
-                            progress((i + 1, total_loras), desc=desc_loras)
+                            safe_progress(progress, i + 1, total_loras, desc_loras)
                         except Exception:
                             raise Error(f"Error loading {config['name']} LoRA")
 
@@ -247,6 +247,7 @@ def generate(
 
     images = []
     current_seed = seed
+    safe_progress(progress, 0, num_images, f"Generating image 0/{num_images}")
     for i in range(num_images):
         try:
             generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
@@ -299,16 +300,8 @@ def generate(
 
         try:
             image = pipe(**kwargs).images[0]
-            if scale > 1:
-                msg = f"Upscaling {scale}x"
-                with timer(msg, logger=log.info):
-                    progress((0, 100), desc=msg)
-                    image = upscaler.predict(image)
-                    progress((100, 100), desc=msg)
             images.append((image, str(current_seed)))
             current_seed += 1
-        except Exception as e:
-            raise Error(f"{e}")
         finally:
             if embeddings:
                 pipe.unload_textual_inversion()
@@ -316,6 +309,15 @@ def generate(
                 pipe.unload_lora_weights()
             CURRENT_STEP = 0
             CURRENT_IMAGE += 1
+
+    if scale > 1:
+        msg = f"Upscaling {scale}x"
+        with timer(msg, logger=log.info):
+            safe_progress(progress, 0, num_images, desc=msg)
+            for i, image in enumerate(images):
+                image = upscaler.predict(image[0])
+                images[i] = image
+                safe_progress(progress, i + 1, num_images, desc=msg)
 
     # cleanup
     loader.collect()
