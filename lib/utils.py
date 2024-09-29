@@ -7,11 +7,14 @@ from contextlib import contextmanager
 from typing import Callable, TypeVar
 
 import anyio
+import cv2
 import httpx
+import numpy as np
 from anyio import Semaphore
 from diffusers.utils import logging as diffusers_logging
 from huggingface_hub._snapshot_download import snapshot_download
 from huggingface_hub.utils import are_progress_bars_disabled
+from PIL import Image
 from transformers import logging as transformers_logging
 from typing_extensions import ParamSpec
 
@@ -105,6 +108,63 @@ def download_civit_file(lora_id, version_id, file_path=".", token=None):
         log.error(f"{e.response.status_code} {e.response.text}")
     except httpx.RequestError as e:
         log.error(f"RequestError: {e}")
+
+
+# resize an image while preserving the aspect ratio (size is width-first)
+def resize_image(image, size):
+    if isinstance(image, Image.Image):
+        image = np.array(image)
+
+    H, W, _ = image.shape
+    W = float(W)
+    H = float(H)
+    target_W, target_H = size
+
+    # Use the smaller scaling factor to maintain the aspect ratio.
+    k_w = float(target_W) / W
+    k_h = float(target_H) / H
+    k = min(k_w, k_h)
+
+    new_W = int(np.round(W * k / 64.0)) * 64
+    new_H = int(np.round(H * k / 64.0)) * 64
+    img = cv2.resize(
+        image,
+        (new_W, new_H),
+        interpolation=cv2.INTER_LANCZOS4 if k > 1 else cv2.INTER_AREA,
+    )
+    return img
+
+
+# ensure image is within bounds
+def get_valid_size(image, step=64, low=512, high=4096):
+    def round_down(x, step=step):
+        return int((x // step) * step)
+
+    def clamp_range(x, low=low, high=high):
+        return max(low, min(x, high))
+
+    if isinstance(image, Image.Image):
+        image = np.array(image)
+
+    H, W = image.shape[:2]
+    ar = W / H
+
+    # try width first
+    if W > H:
+        new_W = round_down(clamp_range(W))
+        new_H = round_down(new_W / ar)
+    else:
+        new_H = round_down(clamp_range(H))
+        new_W = round_down(new_H * ar)
+
+    # if the new size is out of bounds, try the other dimension
+    if new_W < low or new_W > high:
+        new_W = round_down(clamp_range(W))
+        new_H = round_down(new_W / ar)
+    if new_H < low or new_H > high:
+        new_H = round_down(clamp_range(H))
+        new_W = round_down(new_H * ar)
+    return (new_W, new_H)
 
 
 # like the original but supports args and kwargs instead of a dict

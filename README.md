@@ -6,7 +6,7 @@ emoji: 🧨
 colorFrom: purple
 colorTo: blue
 sdk: gradio
-sdk_version: 4.41.0
+sdk_version: 4.44.0
 python_version: 3.11.9
 app_file: app.py
 fullWidth: false
@@ -26,9 +26,6 @@ models:
 - XpucT/Deliberate
 preload_from_hub:  # up to 10
 - >-
-  ai-forever/Real-ESRGAN
-  RealESRGAN_x2.pth,RealESRGAN_x4.pth
-- >-
   Comfy-Org/stable-diffusion-v1-5-archive
   v1-5-pruned-emaonly-fp16.safetensors
 - >-
@@ -43,6 +40,9 @@ preload_from_hub:  # up to 10
 - >-
   Linaqruf/anything-v3-1
   anything-v3-2.safetensors
+- >-
+  lllyasviel/control_v11p_sd15_canny
+  diffusion_pytorch_model.fp16.safetensors
 - >-
   Lykon/dreamshaper-8
   feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
@@ -62,6 +62,7 @@ preload_from_hub:  # up to 10
 Gradio app for Stable Diffusion 1.5 featuring:
 * txt2img and img2img pipelines with IP-Adapter
 * Curated models, LoRAs, and TI embeddings
+* ControlNet with annotators
 * Compel prompt weighting
 * dozens of styles and starter prompts
 * Multiple samplers with Karras scheduling
@@ -69,11 +70,7 @@ Gradio app for Stable Diffusion 1.5 featuring:
 * Real-ESRGAN upscaling
 * Optional tiny autoencoder
 
-There's also a [CLI](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/cli.py).
-
 ## Motivation
-
-I want to:
 
 * host a free and easy-to-use Stable Diffusion UI on ZeroGPU
 * provide the necessary tools for common workflows

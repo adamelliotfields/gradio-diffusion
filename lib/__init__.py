@@ -1,3 +1,4 @@
+from .annotators import CannyAnnotator
 from .config import Config
 from .inference import generate
 from .loader import Loader
@@ -9,13 +10,16 @@ from .utils import (
     download_civit_file,
     download_repo_files,
     enable_progress_bars,
+    get_valid_size,
     load_json,
     read_file,
+    resize_image,
     safe_progress,
     timer,
 )
 
 __all__ = [
+    "CannyAnnotator",
     "Config",
     "Loader",
     "Logger",
@@ -26,8 +30,10 @@ __all__ = [
     "download_repo_files",
     "enable_progress_bars",
     "generate",
+    "get_valid_size",
     "load_json",
     "read_file",
+    "resize_image",
     "safe_progress",
     "timer",
 ]

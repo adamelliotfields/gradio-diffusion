@@ -1,5 +1,6 @@
 anyio==4.6.0
 compel==2.0.3
+controlnet-aux==0.0.9
 deepcache==0.1.1
 diffusers==0.30.3
 einops==0.8.0
@@ -7,7 +8,9 @@ gradio==4.44.0
 h2
 hf-transfer
 httpx
+mediapipe
 numpy==1.26.4
+opencv-contrib-python
 peft
 ruff==0.6.7
 spaces==0.30.2

@@ -1,7 +1,12 @@
 import os
 from importlib import import_module
 
-from diffusers import StableDiffusionImg2ImgPipeline, StableDiffusionPipeline
+from diffusers import (
+    StableDiffusionControlNetImg2ImgPipeline,
+    StableDiffusionControlNetPipeline,
+    StableDiffusionImg2ImgPipeline,
+    StableDiffusionPipeline,
+)
 from diffusers.loaders.single_file import (
     SINGLE_FILE_OPTIONAL_COMPONENTS,
     load_single_file_sub_model,
@@ -219,4 +224,18 @@ class CustomStableDiffusionPipeline(CustomDiffusionMixin, StableDiffusionPipelin
 
 
 class CustomStableDiffusionImg2ImgPipeline(CustomDiffusionMixin, StableDiffusionImg2ImgPipeline):
+    pass
+
+
+class CustomStableDiffusionControlNetPipeline(
+    CustomDiffusionMixin,
+    StableDiffusionControlNetPipeline,
+):
+    pass
+
+
+class CustomStableDiffusionControlNetImg2ImgPipeline(
+    CustomDiffusionMixin,
+    StableDiffusionControlNetImg2ImgPipeline,
+):
     pass

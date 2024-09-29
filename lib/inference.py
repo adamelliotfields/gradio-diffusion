@@ -98,7 +98,7 @@ def generate(
     negative_prompt="",
     image_prompt=None,
     ip_image_prompt=None,
-    ip_face=False,
+    control_image_prompt=None,
     lora_1=None,
     lora_1_weight=0.0,
     lora_2=None,
@@ -108,6 +108,7 @@ def generate(
     seed=None,
     model="Lykon/dreamshaper-8",
     scheduler="DDIM",
+    annotator="canny",
     width=512,
     height=512,
     guidance_scale=7.5,
@@ -120,6 +121,7 @@ def generate(
     taesd=False,
     freeu=False,
     clip_skip=False,
+    ip_face=False,
     Error=Exception,
     Info=None,
     progress=None,
@@ -142,6 +144,10 @@ def generate(
     CURRENT_IMAGE = 1
 
     KIND = "img2img" if image_prompt is not None else "txt2img"
+    KIND = f"controlnet_{KIND}" if control_image_prompt is not None else KIND
+
+    if KIND.startswith("controlnet_") and annotator.lower() not in Config.ANNOTATORS.keys():
+        raise Error(f"Invalid annotator: {annotator}")
 
     EMBEDDINGS_TYPE = (
         ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
@@ -174,6 +180,7 @@ def generate(
         IP_ADAPTER,
         model,
         scheduler,
+        annotator,
         deepcache,
         scale,
         karras,
@@ -292,6 +299,13 @@ def generate(
         if KIND == "img2img":
             kwargs["strength"] = denoising_strength
             kwargs["image"] = prepare_image(image_prompt, (width, height))
+
+        if KIND == "controlnet_txt2img":
+            # don't resize controlnet images
+            kwargs["image"] = prepare_image(control_image_prompt, None)
+
+        if KIND == "controlnet_img2img":
+            kwargs["control_image"] = prepare_image(control_image_prompt, None)
 
         if IP_ADAPTER:
             # don't resize full-face images since they are usually square crops

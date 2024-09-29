@@ -30,7 +30,7 @@
   overflow-y: auto;
 }
 .gallery, .gallery .grid-wrap {
-  height: calc(100vh - 422px);
+  height: calc(100vh - 430px);
   max-height: none;
 }
 
@@ -108,7 +108,10 @@
   content: 'Random prompt';
 }
 .popover#clear:hover::after {
-  content: 'Clear gallery';
+  content: 'Clear';
+}
+.popover#clear-control:hover::after {
+  content: 'Clear';
 }
 .popover#refresh:hover::after {
   content: var(--seed, "-1");

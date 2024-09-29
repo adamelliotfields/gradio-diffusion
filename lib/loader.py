@@ -3,6 +3,7 @@ from threading import Lock
 
 import torch
 from DeepCache import DeepCacheSDHelper
+from diffusers import ControlNetModel
 from diffusers.models import AutoencoderKL, AutoencoderTiny
 from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
 
@@ -23,6 +24,7 @@ class Loader:
                 cls._instance.pipe = None
                 cls._instance.model = None
                 cls._instance.upscaler = None
+                cls._instance.controlnet = None
                 cls._instance.ip_adapter = None
                 cls._instance.log = Logger("Loader")
         return cls._instance
@@ -75,15 +77,36 @@ class Loader:
             return True
         return False
 
-    def _should_unload_pipeline(self, kind="", model=""):
+    def _should_unload_controlnet(self, kind="", controlnet=""):
+        if self.controlnet is None:
+            return False
+        if self.controlnet.lower() != controlnet.lower():
+            return True
+        if not kind.startswith("controlnet_"):
+            return True
+        return False
+
+    def _should_unload_pipeline(self, kind="", model="", controlnet=""):
         if self.pipe is None:
             return False
         if self.model.lower() != model.lower():
             return True
         if kind == "txt2img" and not isinstance(self.pipe, Config.PIPELINES["txt2img"]):
-            return True  # txt2img -> img2img
+            return True
         if kind == "img2img" and not isinstance(self.pipe, Config.PIPELINES["img2img"]):
-            return True  # img2img -> txt2img
+            return True
+        if kind == "controlnet_txt2img" and not isinstance(
+            self.pipe,
+            Config.PIPELINES["controlnet_txt2img"],
+        ):
+            return True
+        if kind == "controlnet_img2img" and not isinstance(
+            self.pipe,
+            Config.PIPELINES["controlnet_img2img"],
+        ):
+            return True
+        if self._should_unload_controlnet(kind, controlnet):
+            return True
         return False
 
     def _unload_upscaler(self):
@@ -128,7 +151,16 @@ class Loader:
             with timer(f"Unloading {self.model}", logger=self.log.info):
                 self.pipe.to("cpu")
 
-    def _unload(self, kind="", model="", ip_adapter="", deepcache=1, scale=1, freeu=False):
+    def _unload(
+        self,
+        kind="",
+        model="",
+        controlnet="",
+        ip_adapter="",
+        deepcache=1,
+        scale=1,
+        freeu=False,
+    ):
         to_unload = []
         if self._should_unload_deepcache(deepcache):  # remove deepcache first
             self._unload_deepcache()
@@ -144,7 +176,10 @@ class Loader:
             self._unload_ip_adapter()
             to_unload.append("ip_adapter")
 
-        if self._should_unload_pipeline(kind, model):
+        if self._should_unload_controlnet(kind, controlnet):
+            to_unload.append("controlnet")
+
+        if self._should_unload_pipeline(kind, model, controlnet):
             self._unload_pipeline()
             to_unload.append("model")
             to_unload.append("pipe")
@@ -288,6 +323,7 @@ class Loader:
         ip_adapter,
         model,
         scheduler,
+        annotator,
         deepcache,
         scale,
         karras,
@@ -336,7 +372,15 @@ class Loader:
             # defaults to float32
             pipe_kwargs["torch_dtype"] = torch.float16
 
-        self._unload(kind, model, ip_adapter, deepcache, scale, freeu)
+        if kind.startswith("controlnet_"):
+            pipe_kwargs["controlnet"] = ControlNetModel.from_pretrained(
+                Config.ANNOTATORS[annotator],
+                torch_dtype=torch.float16,
+                variant="fp16",
+            )
+            self.controlnet = annotator
+
+        self._unload(kind, model, annotator, ip_adapter, deepcache, scale, freeu)
         self._load_pipeline(kind, model, progress, **pipe_kwargs)
 
         # error loading model

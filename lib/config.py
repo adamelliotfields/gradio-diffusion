@@ -16,7 +16,12 @@ from diffusers import (
 from diffusers.utils import logging as diffusers_logging
 from transformers import logging as transformers_logging
 
-from .pipelines import CustomStableDiffusionImg2ImgPipeline, CustomStableDiffusionPipeline
+from .pipelines import (
+    CustomStableDiffusionControlNetImg2ImgPipeline,
+    CustomStableDiffusionControlNetPipeline,
+    CustomStableDiffusionImg2ImgPipeline,
+    CustomStableDiffusionPipeline,
+)
 
 # improved GPU handling and progress bars; set before importing spaces
 os.environ["ZEROGPU_V2"] = "1"
@@ -53,11 +58,14 @@ Config = SimpleNamespace(
     ZERO_GPU=import_module("spaces").config.Config.zero_gpu,
     HF_MODELS={
         # downloaded on startup
-        "Lykon/dreamshaper-8": [*_sd_files],
+        "ai-forever/Real-ESRGAN": ["RealESRGAN_x2.pth", "RealESRGAN_x4.pth"],
         "Comfy-Org/stable-diffusion-v1-5-archive": ["v1-5-pruned-emaonly-fp16.safetensors"],
         "cyberdelia/CyberRealistic": ["CyberRealistic_V5_FP16.safetensors"],
         "fluently/Fluently-v4": ["Fluently-v4.safetensors"],
         "Linaqruf/anything-v3-1": ["anything-v3-2.safetensors"],
+        "lllyasviel/control_v11p_sd15_canny": ["diffusion_pytorch_model.fp16.safetensors"],
+        "Lykon/dreamshaper-8": [*_sd_files],
+        "madebyollin/taesd": ["diffusion_pytorch_model.safetensors"],
         "prompthero/openjourney-v4": ["openjourney-v4.ckpt"],
         "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
         "XpucT/Deliberate": ["Deliberate_v6.safetensors"],
@@ -89,6 +97,8 @@ Config = SimpleNamespace(
     PIPELINES={
         "txt2img": CustomStableDiffusionPipeline,
         "img2img": CustomStableDiffusionImg2ImgPipeline,
+        "controlnet_txt2img": CustomStableDiffusionControlNetPipeline,
+        "controlnet_img2img": CustomStableDiffusionControlNetImg2ImgPipeline,
     },
     MODEL="Lykon/dreamshaper-8",
     MODELS=[
@@ -120,6 +130,9 @@ Config = SimpleNamespace(
         "Euler a": EulerAncestralDiscreteScheduler,
         "PNDM": PNDMScheduler,
         "UniPC 2M": UniPCMultistepScheduler,
+    },
+    ANNOTATORS={
+        "canny": "lllyasviel/control_v11p_sd15_canny",
     },
     EMBEDDING="fast_negative",
     EMBEDDINGS=[

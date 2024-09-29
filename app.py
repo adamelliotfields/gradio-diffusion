@@ -6,13 +6,16 @@ import random
 import gradio as gr
 
 from lib import (
+    CannyAnnotator,
     Config,
     async_call,
     disable_progress_bars,
     download_civit_file,
     download_repo_files,
     generate,
+    get_valid_size,
     read_file,
+    resize_image,
 )
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
@@ -84,6 +87,15 @@ async def random_fn():
     return gr.Textbox(value=random.choice(prompts))
 
 
+# TODO: move this to another file once more annotators are added; will need @GPU decorator
+async def annotate_fn(image, annotator):
+    size = get_valid_size(image)
+    image = resize_image(image, size)
+    if annotator == "canny":
+        canny = CannyAnnotator()
+        return canny(image, size)
+
+
 async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
     if len(args) > 0:
         prompt = args[0]
@@ -92,6 +104,7 @@ async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
     if prompt is None or prompt.strip() == "":
         raise gr.Error("You must enter a prompt")
 
+    # always the last arguments
     DISABLE_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT = args[-2:]
     gen_args = list(args[:-2])
     if DISABLE_IMAGE_PROMPT:
@@ -148,25 +161,24 @@ with gr.Blocks(
     with gr.Tabs():
         with gr.TabItem("🏠 Text"):
             with gr.Column():
-                with gr.Group():
-                    output_images = gr.Gallery(
-                        elem_classes=["gallery"],
-                        show_share_button=False,
-                        object_fit="cover",
-                        interactive=False,
-                        show_label=False,
-                        label="Output",
-                        format="png",
-                        columns=2,
-                    )
-                    prompt = gr.Textbox(
-                        placeholder="What do you want to see?",
-                        autoscroll=False,
-                        show_label=False,
-                        label="Prompt",
-                        max_lines=3,
-                        lines=3,
-                    )
+                output_images = gr.Gallery(
+                    elem_classes=["gallery"],
+                    show_share_button=False,
+                    object_fit="cover",
+                    interactive=False,
+                    show_label=False,
+                    label="Output",
+                    format="png",
+                    columns=2,
+                )
+                prompt = gr.Textbox(
+                    placeholder="What do you want to see?",
+                    autoscroll=False,
+                    show_label=False,
+                    label="Prompt",
+                    max_lines=3,
+                    lines=3,
+                )
 
                 # Buttons
                 with gr.Row():
@@ -196,72 +208,104 @@ with gr.Blocks(
 
         # img2img tab
         with gr.TabItem("🖼️ Image"):
-            with gr.Group():
-                with gr.Row():
-                    image_prompt = gr.Image(
-                        show_share_button=False,
-                        label="Initial Image",
-                        min_width=320,
-                        format="png",
-                        type="pil",
-                    )
-                    ip_image_prompt = gr.Image(
-                        show_share_button=False,
-                        label="IP-Adapter Image",
-                        min_width=320,
-                        format="png",
-                        type="pil",
-                    )
+            with gr.Row():
+                image_prompt = gr.Image(
+                    show_share_button=False,
+                    label="Initial Image",
+                    min_width=320,
+                    format="png",
+                    type="pil",
+                )
+                ip_image_prompt = gr.Image(
+                    show_share_button=False,
+                    label="IP-Adapter Image",
+                    min_width=320,
+                    format="png",
+                    type="pil",
+                )
 
-                with gr.Row():
-                    image_select = gr.Dropdown(
-                        info="Use an initial image from the gallery",
-                        choices=[("None", -1)],
-                        label="Gallery Image",
-                        interactive=True,
-                        filterable=False,
-                        value=-1,
-                    )
-                    ip_image_select = gr.Dropdown(
-                        info="Use an IP-Adapter image from the gallery",
-                        label="Gallery Image (IP-Adapter)",
-                        choices=[("None", -1)],
-                        interactive=True,
-                        filterable=False,
-                        value=-1,
-                    )
+            with gr.Row():
+                image_select = gr.Dropdown(
+                    info="Use an initial image from the gallery",
+                    choices=[("None", -1)],
+                    label="Gallery Image",
+                    interactive=True,
+                    filterable=False,
+                    value=-1,
+                )
+                ip_image_select = gr.Dropdown(
+                    info="Use an IP-Adapter image from the gallery",
+                    label="Gallery Image",
+                    choices=[("None", -1)],
+                    interactive=True,
+                    filterable=False,
+                    value=-1,
+                )
 
-                with gr.Row():
-                    denoising_strength = gr.Slider(
-                        value=Config.DENOISING_STRENGTH,
-                        label="Denoising Strength",
-                        minimum=0.0,
-                        maximum=1.0,
-                        step=0.1,
-                    )
+            with gr.Row():
+                denoising_strength = gr.Slider(
+                    value=Config.DENOISING_STRENGTH,
+                    label="Denoising Strength",
+                    minimum=0.0,
+                    maximum=1.0,
+                    step=0.1,
+                )
 
-                with gr.Row():
-                    disable_image = gr.Checkbox(
-                        elem_classes=["checkbox"],
-                        label="Disable Initial Image",
-                        value=False,
-                    )
-                    disable_ip_image = gr.Checkbox(
-                        elem_classes=["checkbox"],
-                        label="Disable IP-Adapter Image",
-                        value=False,
-                    )
-                    ip_face = gr.Checkbox(
-                        elem_classes=["checkbox"],
-                        label="Use IP-Adapter Face",
-                        value=False,
-                    )
+            with gr.Row():
+                disable_image = gr.Checkbox(
+                    elem_classes=["checkbox"],
+                    label="Disable Initial Image",
+                    value=False,
+                )
+                disable_ip_image = gr.Checkbox(
+                    elem_classes=["checkbox"],
+                    label="Disable IP-Adapter Image",
+                    value=False,
+                )
+                use_ip_face = gr.Checkbox(
+                    elem_classes=["checkbox"],
+                    label="Use IP-Adapter Face",
+                    value=False,
+                )
 
-        # img2img tab
+        # controlnet tab
         with gr.TabItem("🎮 Control"):
-            gr.Markdown(
-                "[ControlNet](https://github.com/lllyasviel/ControlNet) with [preprocessors](https://github.com/huggingface/controlnet_aux) coming soon!"
-            )
+            with gr.Row():
+                control_image_input = gr.Image(
+                    show_share_button=False,
+                    label="Control Image",
+                    min_width=320,
+                    format="png",
+                    type="pil",
+                )
+                control_image_prompt = gr.Image(
+                    interactive=False,
+                    show_share_button=False,
+                    label="Control Image Output",
+                    show_label=False,
+                    min_width=320,
+                    format="png",
+                    type="pil",
+                )
+
+            with gr.Row():
+                control_annotator = gr.Dropdown(
+                    choices=[("Canny", "canny")],
+                    label="Annotator",
+                    filterable=False,
+                    value="canny",
+                )
+
+            with gr.Row():
+                annotate_btn = gr.Button("Annotate", variant="primary")
+                clear_control_btn = gr.ClearButton(
+                    elem_classes=["icon-button", "popover"],
+                    components=[control_image_prompt],
+                    variant="secondary",
+                    elem_id="clear-control",
+                    min_width=0,
+                    value="🗑️",
+                )
 
         with gr.TabItem("⚙️ Menu"):
             with gr.Group():
@@ -445,6 +489,12 @@ with gr.Blocks(
                         value=False,
                     )
 
+    annotate_btn.click(
+        annotate_fn,
+        inputs=[control_image_input, control_annotator],
+        outputs=[control_image_prompt],
+    )
+
     random_btn.click(random_fn, inputs=[], outputs=[prompt], show_api=False)
 
     refresh_btn.click(None, inputs=[], outputs=[seed], js=refresh_seed_js)
@@ -530,7 +580,7 @@ with gr.Blocks(
             negative_prompt,
             image_prompt,
             ip_image_prompt,
-            ip_face,
+            control_image_prompt,
             lora_1,
             lora_1_weight,
             lora_2,
@@ -540,6 +590,7 @@ with gr.Blocks(
             seed,
             model,
             scheduler,
+            control_annotator,
             width,
             height,
             guidance_scale,
@@ -552,6 +603,7 @@ with gr.Blocks(
             use_taesd,
             use_freeu,
             use_clip_skip,
+            use_ip_face,
             DISABLE_IMAGE_PROMPT,
             DISABLE_IP_IMAGE_PROMPT,
         ],
