@@ -5,18 +5,22 @@ import time
 from datetime import datetime
 from itertools import product
 
-import numpy as np
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
-from PIL import Image
 from spaces import GPU
 
 from .config import Config
 from .loader import Loader
 from .logger import Logger
-from .utils import load_json, safe_progress, timer
+from .utils import (
+    annotate_image,
+    load_json,
+    resize_image,
+    safe_progress,
+    timer,
+)
 
 
 def parse_prompt_with_arrays(prompt: str) -> list[str]:
@@ -58,25 +62,7 @@ def apply_style(positive_prompt, negative_prompt, style_id="none"):
     )
 
 
-def prepare_image(input, size=None):
-    image = None
-    if isinstance(input, Image.Image):
-        image = input
-    if isinstance(input, np.ndarray):
-        image = Image.fromarray(input)
-    if isinstance(input, str):
-        if os.path.isfile(input):
-            image = Image.open(input)
-    if image is not None:
-        image = image.convert("RGB")
-    if size is not None:
-        image = image.resize(size, Image.Resampling.LANCZOS)
-    if image is not None:
-        return image
-    else:
-        raise ValueError("Invalid image prompt")
-
-
+# Dynamic signature for the GPU duration function
 def gpu_duration(**kwargs):
     loading = 20
     duration = 10
@@ -97,8 +83,8 @@ def generate(
     positive_prompt,
     negative_prompt="",
     image_prompt=None,
-    ip_image_prompt=None,
     control_image_prompt=None,
+    ip_image_prompt=None,
     lora_1=None,
     lora_1_weight=0.0,
     lora_2=None,
@@ -145,9 +131,6 @@ def generate(
 
     KIND = "img2img" if image_prompt is not None else "txt2img"
     KIND = f"controlnet_{KIND}" if control_image_prompt is not None else KIND
-
-    if KIND.startswith("controlnet_") and annotator.lower() not in Config.ANNOTATORS.keys():
-        raise Error(f"Invalid annotator: {annotator}")
 
     EMBEDDINGS_TYPE = (
         ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
@@ -296,21 +279,19 @@ def generate(
         if progress is not None:
             kwargs["callback_on_step_end"] = callback_on_step_end
 
+        # Resizing so the initial latents are the same size as the generated image
         if KIND == "img2img":
             kwargs["strength"] = denoising_strength
-            kwargs["image"] = prepare_image(image_prompt, (width, height))
+            kwargs["image"] = resize_image(image_prompt, (width, height))
 
         if KIND == "controlnet_txt2img":
-            # don't resize controlnet images
-            kwargs["image"] = prepare_image(control_image_prompt, None)
+            kwargs["image"] = annotate_image(control_image_prompt, annotator)
 
         if KIND == "controlnet_img2img":
-            kwargs["control_image"] = prepare_image(control_image_prompt, None)
+            kwargs["control_image"] = annotate_image(control_image_prompt, annotator)
 
         if IP_ADAPTER:
-            # don't resize full-face images since they are usually square crops
-            size = None if ip_face else (width, height)
-            kwargs["ip_adapter_image"] = prepare_image(ip_image_prompt, size)
+            kwargs["ip_adapter_image"] = resize_image(ip_image_prompt)
 
         try:
             image = pipe(**kwargs).images[0]

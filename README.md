@@ -60,24 +60,15 @@ preload_from_hub:  # up to 10
 # diffusion
 
 Gradio app for Stable Diffusion 1.5 featuring:
-* txt2img and img2img pipelines with IP-Adapter
+* txt2img and img2img pipelines with ControlNet and IP-Adapter
+* Canny edge detection (more preprocessors coming soon)
 * Curated models, LoRAs, and TI embeddings
-* ControlNet with annotators
 * Compel prompt weighting
-* dozens of styles and starter prompts
+* Hand-written style templates
 * Multiple samplers with Karras scheduling
 * DeepCache, FreeU, and Clip Skip available
 * Real-ESRGAN upscaling
 * Optional tiny autoencoder
-
-## Motivation
-
-* host a free and easy-to-use Stable Diffusion UI on ZeroGPU
-* provide the necessary tools for common workflows
-* curate useful models, adapters, and embeddings
-* prefer Diffusers over custom PyTorch
-* be fast on 8GB with no offloading
-* only support CUDA on Linux/WSL
 
 ## Usage
 

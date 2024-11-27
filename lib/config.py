@@ -23,9 +23,10 @@ from .pipelines import (
     CustomStableDiffusionPipeline,
 )
 
-# improved GPU handling and progress bars; set before importing spaces
+# Improved GPU handling and progress bars; set before importing spaces
 os.environ["ZEROGPU_V2"] = "1"
 
+# Errors if enabled and not installed
 if find_spec("hf_transfer"):
     os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
@@ -35,7 +36,8 @@ filterwarnings("ignore", category=FutureWarning, module="transformers")
 diffusers_logging.set_verbosity_error()
 transformers_logging.set_verbosity_error()
 
-_sd_files = [
+# Standard Stable Diffusion 1.5 file structure
+sd_files = [
     "feature_extractor/preprocessor_config.json",
     "safety_checker/config.json",
     "scheduler/scheduler_config.json",
@@ -52,10 +54,12 @@ _sd_files = [
     "model_index.json",
 ]
 
+# Using namespace instead of dataclass for simplicity
 Config = SimpleNamespace(
     HF_TOKEN=os.environ.get("HF_TOKEN", None),
     CIVIT_TOKEN=os.environ.get("CIVIT_TOKEN", None),
     ZERO_GPU=import_module("spaces").config.Config.zero_gpu,
+    # TODO: fix model config redundancy
     HF_MODELS={
         # downloaded on startup
         "ai-forever/Real-ESRGAN": ["RealESRGAN_x2.pth", "RealESRGAN_x4.pth"],
@@ -64,7 +68,7 @@ Config = SimpleNamespace(
         "fluently/Fluently-v4": ["Fluently-v4.safetensors"],
         "Linaqruf/anything-v3-1": ["anything-v3-2.safetensors"],
         "lllyasviel/control_v11p_sd15_canny": ["diffusion_pytorch_model.fp16.safetensors"],
-        "Lykon/dreamshaper-8": [*_sd_files],
+        "Lykon/dreamshaper-8": [*sd_files],
         "madebyollin/taesd": ["diffusion_pytorch_model.safetensors"],
         "prompthero/openjourney-v4": ["openjourney-v4.ckpt"],
         "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
@@ -111,8 +115,9 @@ Config = SimpleNamespace(
         "SG161222/Realistic_Vision_V5.1_noVAE",
         "XpucT/Deliberate",
     ],
+    # Single-file model weights
     MODEL_CHECKPOINTS={
-        # keep keys lowercase
+        # keep keys lowercase for case-insensitive matching in the loader
         "comfy-org/stable-diffusion-v1-5-archive": "v1-5-pruned-emaonly-fp16.safetensors",
         "cyberdelia/cyberrealistic": "CyberRealistic_V5_FP16.safetensors",
         "fluently/fluently-v4": "Fluently-v4.safetensors",
@@ -131,6 +136,7 @@ Config = SimpleNamespace(
         "PNDM": PNDMScheduler,
         "UniPC 2M": UniPCMultistepScheduler,
     },
+    ANNOTATOR="canny",
     ANNOTATORS={
         "canny": "lllyasviel/control_v11p_sd15_canny",
     },

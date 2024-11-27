@@ -372,6 +372,7 @@ class Loader:
             # defaults to float32
             pipe_kwargs["torch_dtype"] = torch.float16
 
+        # config maps the repo to the ID: canny -> lllyasviel/control_sd15_canny
         if kind.startswith("controlnet_"):
             pipe_kwargs["controlnet"] = ControlNetModel.from_pretrained(
                 Config.ANNOTATORS[annotator],

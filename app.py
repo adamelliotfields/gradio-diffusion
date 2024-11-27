@@ -6,16 +6,13 @@ import random
 import gradio as gr
 
 from lib import (
-    CannyAnnotator,
     Config,
     async_call,
     disable_progress_bars,
     download_civit_file,
     download_repo_files,
     generate,
-    get_valid_size,
     read_file,
-    resize_image,
 )
 
 # the CSS `content` attribute expects a string so we need to wrap the number in quotes
@@ -45,7 +42,7 @@ aspect_ratio_js = """
 """
 
 
-def create_image_dropdown(images, locked=False):
+def image_prompt_fn(images, locked=False):
     if locked:
         return gr.Dropdown(
             choices=[("🔒", -2)],
@@ -60,19 +57,17 @@ def create_image_dropdown(images, locked=False):
         )
 
 
-async def gallery_fn(images, image, ip_image):
+async def gallery_fn(images, image, control_image, ip_image):
     return (
-        create_image_dropdown(images, locked=image is not None),
-        create_image_dropdown(images, locked=ip_image is not None),
+        image_prompt_fn(images, locked=image is not None),
+        image_prompt_fn(images, locked=control_image is not None),
+        image_prompt_fn(images, locked=ip_image is not None),
     )
 
 
-async def image_prompt_fn(images):
-    return create_image_dropdown(images)
-
-
-# handle selecting an image from the gallery
-# -2 is the lock icon, -1 is None
+# Handle selecting an image from the gallery:
+# * -2 is the lock icon
+# * -1 is None
 async def image_select_fn(images, image, i):
     if i == -2:
         return gr.Image(image)
@@ -87,15 +82,6 @@ async def random_fn():
     return gr.Textbox(value=random.choice(prompts))
 
 
-# TODO: move this to another file once more annotators are added; will need @GPU decorator
-async def annotate_fn(image, annotator):
-    size = get_valid_size(image)
-    image = resize_image(image, size)
-    if annotator == "canny":
-        canny = CannyAnnotator()
-        return canny(image, size)
-
-
 async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
     if len(args) > 0:
         prompt = args[0]
@@ -105,17 +91,22 @@ async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
         raise gr.Error("You must enter a prompt")
 
     # always the last arguments
-    DISABLE_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT = args[-2:]
-    gen_args = list(args[:-2])
+    DISABLE_IMAGE_PROMPT, DISABLE_CONTROL_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT = args[-3:]
+    gen_args = list(args[:-3])
+
+    # the first two arguments are the prompt and negative prompt
     if DISABLE_IMAGE_PROMPT:
         gen_args[2] = None
-    if DISABLE_IP_IMAGE_PROMPT:
+    if DISABLE_CONTROL_IMAGE_PROMPT:
         gen_args[3] = None
+    if DISABLE_IP_IMAGE_PROMPT:
+        gen_args[4] = None
 
     try:
         if Config.ZERO_GPU:
             progress((0, 100), desc="ZeroGPU init")
 
+        # the remaining arguments are the alert handlers and progress bar
         images = await async_call(
             generate,
             *gen_args,
@@ -125,6 +116,7 @@ async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
         )
     except RuntimeError:
         raise gr.Error("Error: Please try again")
+
     return images
 
 
@@ -155,6 +147,7 @@ with gr.Blocks(
     # override image inputs without clearing them
     DISABLE_IMAGE_PROMPT = gr.State(False)
     DISABLE_IP_IMAGE_PROMPT = gr.State(False)
+    DISABLE_CONTROL_IMAGE_PROMPT = gr.State(False)
 
     gr.HTML(read_file("./partials/intro.html"))
 
@@ -212,6 +205,14 @@ with gr.Blocks(
                 image_prompt = gr.Image(
                     show_share_button=False,
                     label="Initial Image",
+                    min_width=640,
+                    format="png",
+                    type="pil",
+                )
+            with gr.Row():
+                control_image_prompt = gr.Image(
+                    show_share_button=False,
+                    label="Control Image",
                     min_width=320,
                     format="png",
                     type="pil",
@@ -226,100 +227,84 @@ with gr.Blocks(
 
             with gr.Row():
                 image_select = gr.Dropdown(
-                    info="Use an initial image from the gallery",
+                    info="Use a gallery image for initial latents",
                     choices=[("None", -1)],
-                    label="Gallery Image",
+                    label="Initial Image",
                     interactive=True,
                     filterable=False,
+                    min_width=100,
+                    value=-1,
+                )
+                control_image_select = gr.Dropdown(
+                    info="Use a gallery image for ControlNet",
+                    label="ControlNet Image",
+                    choices=[("None", -1)],
+                    interactive=True,
+                    filterable=False,
+                    min_width=100,
                     value=-1,
                 )
                 ip_image_select = gr.Dropdown(
-                    info="Use an IP-Adapter image from the gallery",
-                    label="Gallery Image",
+                    info="Use a gallery image for IP-Adapter",
+                    label="IP-Adapter Image",
                     choices=[("None", -1)],
                     interactive=True,
                     filterable=False,
+                    min_width=100,
                     value=-1,
                 )
 
             with gr.Row():
                 denoising_strength = gr.Slider(
+                    label="Initial Image Strength",
                     value=Config.DENOISING_STRENGTH,
-                    label="Denoising Strength",
                     minimum=0.0,
                     maximum=1.0,
                     step=0.1,
                 )
+                control_annotator = gr.Dropdown(
+                    label="ControlNet Annotator",
+                    # TODO: annotators should be in config with names
+                    choices=[("Canny", "canny")],
+                    value=Config.ANNOTATOR,
+                    filterable=False,
+                )
 
             with gr.Row():
                 disable_image = gr.Checkbox(
-                    elem_classes=["checkbox"],
                     label="Disable Initial Image",
+                    elem_classes=["checkbox"],
+                    value=False,
+                )
+                disable_control_image = gr.Checkbox(
+                    label="Disable ControlNet Image",
+                    elem_classes=["checkbox"],
                     value=False,
                 )
                 disable_ip_image = gr.Checkbox(
-                    elem_classes=["checkbox"],
                     label="Disable IP-Adapter Image",
+                    elem_classes=["checkbox"],
                     value=False,
                 )
                 use_ip_face = gr.Checkbox(
-                    elem_classes=["checkbox"],
                     label="Use IP-Adapter Face",
+                    elem_classes=["checkbox"],
                     value=False,
-                )
-
-        # controlnet tab
-        with gr.TabItem("🎮 Control"):
-            with gr.Row():
-                control_image_input = gr.Image(
-                    show_share_button=False,
-                    label="Control Image",
-                    min_width=320,
-                    format="png",
-                    type="pil",
-                )
-                control_image_prompt = gr.Image(
-                    interactive=False,
-                    show_share_button=False,
-                    label="Control Image Output",
-                    show_label=False,
-                    min_width=320,
-                    format="png",
-                    type="pil",
-                )
-
-            with gr.Row():
-                control_annotator = gr.Dropdown(
-                    choices=[("Canny", "canny")],
-                    label="Annotator",
-                    filterable=False,
-                    value="canny",
-                )
-
-            with gr.Row():
-                annotate_btn = gr.Button("Annotate", variant="primary")
-                clear_control_btn = gr.ClearButton(
-                    elem_classes=["icon-button", "popover"],
-                    components=[control_image_prompt],
-                    variant="secondary",
-                    elem_id="clear-control",
-                    min_width=0,
-                    value="🗑️",
                 )
 
         with gr.TabItem("⚙️ Menu"):
             with gr.Group():
                 negative_prompt = gr.Textbox(
-                    value="nsfw+",
                     label="Negative Prompt",
+                    value="nsfw+",
                     lines=2,
                 )
 
                 with gr.Row():
                     model = gr.Dropdown(
                         choices=Config.MODELS,
-                        filterable=False,
                         value=Config.MODEL,
+                        filterable=False,
                         label="Model",
                         min_width=240,
                     )
@@ -489,24 +474,11 @@ with gr.Blocks(
                         value=False,
                     )
 
-    annotate_btn.click(
-        annotate_fn,
-        inputs=[control_image_input, control_annotator],
-        outputs=[control_image_prompt],
-    )
-
     random_btn.click(random_fn, inputs=[], outputs=[prompt], show_api=False)
 
     refresh_btn.click(None, inputs=[], outputs=[seed], js=refresh_seed_js)
 
     seed.change(None, inputs=[seed], outputs=[], js=seed_js)
-
-    file_format.change(
-        lambda f: (gr.Gallery(format=f), gr.Image(format=f), gr.Image(format=f)),
-        inputs=[file_format],
-        outputs=[output_images, image_prompt, ip_image_prompt],
-        show_api=False,
-    )
 
     # input events are only user input; change events are both user and programmatic
     aspect_ratio.input(
@@ -516,11 +488,23 @@ with gr.Blocks(
         js=aspect_ratio_js,
     )
 
+    file_format.change(
+        lambda f: (
+            gr.Gallery(format=f),
+            gr.Image(format=f),
+            gr.Image(format=f),
+            gr.Image(format=f),
+        ),
+        inputs=[file_format],
+        outputs=[output_images, image_prompt, control_image_prompt, ip_image_prompt],
+        show_api=False,
+    )
+
     # lock the input images so you don't lose them when the gallery updates
     output_images.change(
         gallery_fn,
-        inputs=[output_images, image_prompt, ip_image_prompt],
-        outputs=[image_select, ip_image_select],
+        inputs=[output_images, image_prompt, control_image_prompt, ip_image_prompt],
+        outputs=[image_select, control_image_select, ip_image_select],
         show_api=False,
     )
 
@@ -529,6 +513,12 @@ with gr.Blocks(
         image_select_fn,
         inputs=[output_images, image_prompt, image_select],
         outputs=[image_prompt],
+        show_api=False,
+    )
+    control_image_select.change(
+        image_select_fn,
+        inputs=[output_images, control_image_prompt, control_image_select],
+        outputs=[control_image_prompt],
         show_api=False,
     )
     ip_image_select.change(
@@ -543,6 +533,12 @@ with gr.Blocks(
         image_prompt_fn,
         inputs=[output_images],
         outputs=[image_select],
+        show_api=False,
+    )
+    control_image_prompt.clear(
+        image_prompt_fn,
+        inputs=[output_images],
+        outputs=[control_image_select],
         show_api=False,
     )
     ip_image_prompt.clear(
@@ -563,10 +559,14 @@ with gr.Blocks(
 
     # toggle image prompts by updating session state
     gr.on(
-        triggers=[disable_image.input, disable_ip_image.input],
-        fn=lambda disable_image, disable_ip_image: (disable_image, disable_ip_image),
-        inputs=[disable_image, disable_ip_image],
-        outputs=[DISABLE_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT],
+        triggers=[disable_image.input, disable_control_image.input, disable_ip_image.input],
+        fn=lambda disable_image, disable_control_image, disable_ip_image: (
+            disable_image,
+            disable_control_image,
+            disable_ip_image,
+        ),
+        inputs=[disable_image, disable_control_image, disable_ip_image],
+        outputs=[DISABLE_IMAGE_PROMPT, DISABLE_CONTROL_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT],
     )
 
     # generate images
@@ -579,8 +579,8 @@ with gr.Blocks(
             prompt,
             negative_prompt,
             image_prompt,
-            ip_image_prompt,
             control_image_prompt,
+            ip_image_prompt,
             lora_1,
             lora_1_weight,
             lora_2,
@@ -605,6 +605,7 @@ with gr.Blocks(
             use_clip_skip,
             use_ip_face,
             DISABLE_IMAGE_PROMPT,
+            DISABLE_CONTROL_IMAGE_PROMPT,
             DISABLE_IP_IMAGE_PROMPT,
         ],
     )

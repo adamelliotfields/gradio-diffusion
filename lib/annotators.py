@@ -1,6 +1,8 @@
 from threading import Lock
+from typing import Tuple
 
 from controlnet_aux import CannyDetector
+from PIL import Image
 
 
 class CannyAnnotator:
@@ -14,7 +16,7 @@ class CannyAnnotator:
                 cls._instance.model = CannyDetector()
         return cls._instance
 
-    def __call__(self, img, size):
+    def __call__(self, img: Image.Image, size: Tuple[int, int]) -> Image.Image:
         resolution = min(*size)
         return self.model(
             img,
