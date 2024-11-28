@@ -1,7 +1,7 @@
 ---
 # https://huggingface.co/docs/hub/en/spaces-config-reference
-title: Diffusion Zero
-short_description: Image generation studio on ZeroGPU
+title: Diffusion
+short_description: Image generation studio for SD 1.5
 emoji: 🧨
 colorFrom: purple
 colorTo: blue
@@ -62,7 +62,6 @@ preload_from_hub:  # up to 10
 Gradio app for Stable Diffusion 1.5 featuring:
 * txt2img and img2img pipelines with ControlNet and IP-Adapter
 * Canny edge detection (more preprocessors coming soon)
-* Curated models, LoRAs, and TI embeddings
 * Compel prompt weighting
 * Hand-written style templates
 * Multiple samplers with Karras scheduling

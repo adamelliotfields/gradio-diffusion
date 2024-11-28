@@ -32,15 +32,6 @@ Each model checkpoint has a different aesthetic:
 * [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE): realistic
 * [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate): general purpose stylized
 
-### LoRA
-
-Apply up to 2 LoRA (low-rank adaptation) adapters with adjustable strength:
-
-* [Perfection Style](https://civitai.com/models/411088?modelVersionId=486099): attempts to improve aesthetics, use high strength
-* [Detailed Style](https://civitai.com/models/421162?modelVersionId=486110): attempts to improve details, use low strength
-
-> NB: The trigger words are automatically appended to the positive prompt for you.
-
 ### Styles
 
 [Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
@@ -55,7 +46,7 @@ The `Anime: *` styles work the best with Dreamshaper. When using the anime-speci
 * Guidance: `10`
 * Steps: `50`
 
-You subject should be a few simple tokens like `girl, brunette, blue eyes, armor, nebula, celestial`. Experiment with `Clip Skip` and `Karras`. Finish with the `Perfection Style` LoRA on a moderate setting and upscale. 
+You subject should be a few simple tokens like `girl, brunette, blue eyes, armor, nebula, celestial`. Experiment with `Clip Skip` and `Karras`. 
 
 ### Scale
 

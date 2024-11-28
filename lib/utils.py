@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from typing import Callable, Tuple, TypeVar
 
 import anyio
-import httpx
 import numpy as np
 import torch
 from anyio import Semaphore
@@ -19,7 +18,6 @@ from transformers import logging as transformers_logging
 from typing_extensions import ParamSpec
 
 from .annotators import CannyAnnotator
-from .logger import Logger
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -89,34 +87,6 @@ def download_repo_files(repo_id, allow_patterns, token=None):
     if was_disabled:
         disable_progress_bars()
     return snapshot_path
-
-
-def download_civit_file(lora_id, version_id, file_path=".", token=None):
-    base_url = "https://civitai.com/api/download/models"
-    file = f"{file_path}/{lora_id}.{version_id}.safetensors"
-    log = Logger("download_civit_file")
-
-    if os.path.exists(file):
-        return
-
-    try:
-        params = {"token": token}
-        response = httpx.get(
-            f"{base_url}/{version_id}",
-            timeout=None,
-            params=params,
-            follow_redirects=True,
-        )
-
-        response.raise_for_status()
-        os.makedirs(file_path, exist_ok=True)
-
-        with open(file, "wb") as f:
-            f.write(response.content)
-    except httpx.HTTPStatusError as e:
-        log.error(f"{e.response.status_code} {e.response.text}")
-    except httpx.RequestError as e:
-        log.error(f"RequestError: {e}")
 
 
 def image_to_pil(image: Image.Image):

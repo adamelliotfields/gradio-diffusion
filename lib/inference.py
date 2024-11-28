@@ -66,10 +66,6 @@ def generate(
     image_prompt=None,
     control_image_prompt=None,
     ip_image_prompt=None,
-    lora_1=None,
-    lora_1_weight=0.0,
-    lora_2=None,
-    lora_2_weight=0.0,
     style=None,
     seed=None,
     model="Lykon/dreamshaper-8",
@@ -159,40 +155,6 @@ def generate(
     pipe = loader.pipe
     upscaler = loader.upscaler
 
-    # load loras
-    loras = []
-    weights = []
-    loras_and_weights = [(lora_1, lora_1_weight), (lora_2, lora_2_weight)]
-    loras_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "loras"))
-    total_loras = sum(1 for lora, _ in loras_and_weights if lora and lora.lower() != "none")
-    desc_loras = "Loading LoRAs"
-    if total_loras > 0:
-        with timer(f"Loading {total_loras} LoRA{'s' if total_loras > 1 else ''}"):
-            safe_progress(progress, 0, total_loras, desc_loras)
-            for i, (lora, weight) in enumerate(loras_and_weights):
-                if lora and lora.lower() != "none" and lora not in loras:
-                    config = Config.CIVIT_LORAS.get(lora)
-                    if config:
-                        try:
-                            pipe.load_lora_weights(
-                                loras_dir,
-                                adapter_name=lora,
-                                weight_name=f"{lora}.{config['model_version_id']}.safetensors",
-                            )
-                            weights.append(weight)
-                            loras.append(lora)
-                            safe_progress(progress, i + 1, total_loras, desc_loras)
-                        except Exception:
-                            raise Error(f"Error loading {config['name']} LoRA")
-
-    # unload after generating or if there was an error
-    try:
-        if loras:
-            pipe.set_adapters(loras, adapter_weights=weights)
-    except Exception:
-        pipe.unload_lora_weights()
-        raise Error("Error setting LoRA weights")
-
     # Load negative embedding if requested
     if negative_embedding:
         embeddings_dir = os.path.abspath(
@@ -233,9 +195,6 @@ def generate(
 
             if negative_embedding:
                 negative_styled += f", <{Config.NEGATIVE_EMBEDDING}>"
-
-            for lora in loras:
-                positive_styled += f", {Config.CIVIT_LORAS[lora]['trigger']}"
 
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
                 [compel(positive_styled), compel(negative_styled)]
@@ -278,8 +237,6 @@ def generate(
         finally:
             if negative_embedding:
                 pipe.unload_textual_inversion()
-            if loras:
-                pipe.unload_lora_weights()
             CURRENT_STEP = 0
             CURRENT_IMAGE += 1
 

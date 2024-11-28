@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import random
 
 import gradio as gr
@@ -9,7 +8,6 @@ from lib import (
     Config,
     async_call,
     disable_progress_bars,
-    download_civit_file,
     download_repo_files,
     generate,
     read_file,
@@ -215,41 +213,6 @@ with gr.Blocks(
                     label="Scheduler",
                     filterable=False,
                 )
-            with gr.Row():
-                with gr.Group(elem_classes=["gap-0"]):
-                    lora_1 = gr.Dropdown(
-                        min_width=240,
-                        label="LoRA #1",
-                        value="none",
-                        choices=[("None", "none")]
-                        + [
-                            (lora["name"], lora_id) for lora_id, lora in Config.CIVIT_LORAS.items()
-                        ],
-                    )
-                    lora_1_weight = gr.Slider(
-                        value=0.0,
-                        minimum=0.0,
-                        maximum=1.0,
-                        step=0.1,
-                        show_label=False,
-                    )
-                with gr.Group(elem_classes=["gap-0"]):
-                    lora_2 = gr.Dropdown(
-                        min_width=240,
-                        label="LoRA #2",
-                        value="none",
-                        choices=[("None", "none")]
-                        + [
-                            (lora["name"], lora_id) for lora_id, lora in Config.CIVIT_LORAS.items()
-                        ],
-                    )
-                    lora_2_weight = gr.Slider(
-                        value=0.0,
-                        minimum=0.0,
-                        maximum=1.0,
-                        step=0.1,
-                        show_label=False,
-                    )
 
             # Generation settings
             gr.HTML("<h3>Generation</h3>")
@@ -479,10 +442,6 @@ with gr.Blocks(
             image_prompt,
             control_image_prompt,
             ip_image_prompt,
-            lora_1,
-            lora_1_weight,
-            lora_2,
-            lora_2_weight,
             style,
             seed,
             model,
@@ -517,16 +476,6 @@ if __name__ == "__main__":
     disable_progress_bars()
     for repo_id, allow_patterns in Config.HF_MODELS.items():
         download_repo_files(repo_id, allow_patterns, token=Config.HF_TOKEN)
-
-    # download civit loras
-    for lora_id, lora in Config.CIVIT_LORAS.items():
-        file_path = os.path.join(os.path.dirname(__file__), "loras")
-        download_civit_file(
-            lora_id,
-            lora["model_version_id"],
-            file_path=file_path,
-            token=Config.CIVIT_TOKEN,
-        )
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
     demo.queue(default_concurrency_limit=1).launch(

@@ -57,7 +57,6 @@ sd_files = [
 # Using namespace instead of dataclass for simplicity
 Config = SimpleNamespace(
     HF_TOKEN=os.environ.get("HF_TOKEN", None),
-    CIVIT_TOKEN=os.environ.get("CIVIT_TOKEN", None),
     ZERO_GPU=import_module("spaces").config.Config.zero_gpu,
     # TODO: fix model config redundancy
     HF_MODELS={
@@ -73,22 +72,6 @@ Config = SimpleNamespace(
         "prompthero/openjourney-v4": ["openjourney-v4.ckpt"],
         "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
         "XpucT/Deliberate": ["Deliberate_v6.safetensors"],
-    },
-    CIVIT_LORAS={
-        # https://civitai.com/models/411088?modelVersionId=486099
-        "perfection_style": {
-            "model_id": "411088",
-            "model_version_id": "486099",
-            "name": "Perfection Style",
-            "trigger": "perfection style",
-        },
-        # https://civitai.com/models/421162?modelVersionId=486110
-        "detailed_style": {
-            "model_id": "421162",
-            "model_version_id": "486110",
-            "name": "Detailed Style",
-            "trigger": "detailed style",
-        },
     },
     MONO_FONTS=["monospace"],
     SANS_FONTS=[
