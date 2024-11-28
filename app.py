@@ -302,16 +302,6 @@ with gr.Blocks(
                     label="Use negative TI",
                     value=False,
                 )
-                use_freeu = gr.Checkbox(
-                    elem_classes=["checkbox"],
-                    label="FreeU",
-                    value=False,
-                )
-                use_clip_skip = gr.Checkbox(
-                    elem_classes=["checkbox"],
-                    label="Clip skip",
-                    value=False,
-                )
 
             # Image-to-Image settings
             gr.HTML("<h3>Image-to-Image</h3>")
@@ -451,8 +441,6 @@ with gr.Blocks(
             scale,
             num_images,
             use_karras,
-            use_freeu,
-            use_clip_skip,
             use_ip_face,
             use_negative_embedding,
             DISABLE_IMAGE_PROMPT,

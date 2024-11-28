@@ -87,11 +87,3 @@ Enable `Use negative TI` to append [`fast_negative`](https://civitai.com/models/
 * `2`: more quality
 * `3`: balanced
 * `4`: more speed
-
-#### FreeU
-
-[FreeU](https://github.com/ChenyangSi/FreeU) re-weights the contributions sourced from the UNet’s skip connections and backbone feature maps. Can sometimes improve image quality.
-
-#### Clip Skip
-
-When enabled, the last CLIP layer is skipped. Can sometimes improve image quality.

@@ -65,7 +65,7 @@ Gradio app for Stable Diffusion 1.5 featuring:
 * Compel prompt weighting
 * Hand-written style templates
 * Multiple samplers with Karras scheduling
-* DeepCache, FreeU, and Clip Skip available
+* DeepCache available
 * Real-ESRGAN upscaling
 
 ## Usage

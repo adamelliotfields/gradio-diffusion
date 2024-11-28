@@ -80,8 +80,6 @@ def generate(
     scale=1,
     num_images=1,
     karras=False,
-    freeu=False,
-    clip_skip=False,
     ip_face=False,
     negative_embedding=False,
     Error=Exception,
@@ -108,11 +106,7 @@ def generate(
     KIND = "img2img" if image_prompt is not None else "txt2img"
     KIND = f"controlnet_{KIND}" if control_image_prompt is not None else KIND
 
-    EMBEDDINGS_TYPE = (
-        ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
-        if clip_skip
-        else ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
-    )
+    EMBEDDINGS_TYPE = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
 
     if ip_image_prompt:
         IP_ADAPTER = "full-face" if ip_face else "plus"
@@ -143,7 +137,6 @@ def generate(
         deepcache,
         scale,
         karras,
-        freeu,
         progress,
     )
 

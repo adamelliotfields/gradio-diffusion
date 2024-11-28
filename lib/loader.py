@@ -29,14 +29,6 @@ class Loader:
                 cls._instance.log = Logger("Loader")
         return cls._instance
 
-    @property
-    def _has_freeu(self):
-        if self.pipe is not None:
-            attrs = ["b1", "b2", "s1", "s2"]
-            block = self.pipe.unet.up_blocks[0]
-            return all(getattr(block, attr, None) is not None for attr in attrs)
-        return False
-
     def _should_unload_upscaler(self, scale=1):
         if self.upscaler is not None and self.upscaler.scale != scale:
             return True
@@ -47,11 +39,6 @@ class Loader:
         if has_deepcache and interval == 1:
             return True
         if has_deepcache and self.pipe.deepcache.params["cache_interval"] != interval:
-            return True
-        return False
-
-    def _should_unload_freeu(self, freeu=False):
-        if self._has_freeu and not freeu:
             return True
         return False
 
@@ -106,11 +93,6 @@ class Loader:
             self.pipe.deepcache.disable()
             delattr(self.pipe, "deepcache")
 
-    def _unload_freeu(self, freeu=False):
-        if self._has_freeu and not freeu:
-            self.log.info("Disabling FreeU")
-            self.pipe.disable_freeu()
-
     # Copied from https://github.com/huggingface/diffusers/blob/v0.28.0/src/diffusers/loaders/ip_adapter.py#L300
     def _unload_ip_adapter(self):
         if self.ip_adapter is not None:
@@ -145,14 +127,10 @@ class Loader:
         ip_adapter="",
         deepcache=1,
         scale=1,
-        freeu=False,
     ):
         to_unload = []
         if self._should_unload_deepcache(deepcache):  # remove deepcache first
             self._unload_deepcache()
-
-        if self._should_unload_freeu(freeu):
-            self._unload_freeu()
 
         if self._should_unload_upscaler(scale):
             self._unload_upscaler()
@@ -178,11 +156,6 @@ class Loader:
 
     def _should_load_upscaler(self, scale=1):
         if self.upscaler is None and scale > 1:
-            return True
-        return False
-
-    def _should_load_freeu(self, freeu=False):
-        if not self._has_freeu and freeu:
             return True
         return False
 
@@ -221,12 +194,6 @@ class Loader:
             self.pipe.deepcache = DeepCacheSDHelper(self.pipe)
             self.pipe.deepcache.set_params(cache_interval=interval)
             self.pipe.deepcache.enable()
-
-    # https://github.com/ChenyangSi/FreeU
-    def _load_freeu(self, freeu=False):
-        if self._should_load_freeu(freeu):
-            self.log.info("Enabling FreeU")
-            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
     def _load_ip_adapter(self, ip_adapter=""):
         if self._should_load_ip_adapter(ip_adapter):
@@ -298,7 +265,6 @@ class Loader:
         deepcache,
         scale,
         karras,
-        freeu,
         progress,
     ):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -351,7 +317,7 @@ class Loader:
             )
             self.controlnet = annotator
 
-        self._unload(kind, model, annotator, ip_adapter, deepcache, scale, freeu)
+        self._unload(kind, model, annotator, ip_adapter, deepcache, scale)
         self._load_pipeline(kind, model, progress, **pipe_kwargs)
 
         # error loading model
@@ -379,7 +345,6 @@ class Loader:
         CURRENT_STEP = 1
         TOTAL_STEPS = sum(
             [
-                self._should_load_freeu(freeu),
                 self._should_load_deepcache(deepcache),
                 self._should_load_ip_adapter(ip_adapter),
                 self._should_load_upscaler(scale),
@@ -387,11 +352,6 @@ class Loader:
         )
 
         desc = "Configuring pipeline"
-        if not self._has_freeu and freeu:
-            self._load_freeu(freeu)
-            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
-            CURRENT_STEP += 1
-
         if self._should_load_deepcache(deepcache):
             self._load_deepcache(deepcache)
             safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
