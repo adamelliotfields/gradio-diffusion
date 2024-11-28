@@ -216,15 +216,6 @@ with gr.Blocks(
                     filterable=False,
                 )
             with gr.Row():
-                embeddings = gr.Dropdown(
-                    elem_id="embeddings",
-                    label="Embeddings",
-                    choices=[(f"<{e}>", e) for e in Config.EMBEDDINGS],
-                    multiselect=True,
-                    value=[Config.EMBEDDING],
-                    min_width=240,
-                )
-            with gr.Row():
                 with gr.Group(elem_classes=["gap-0"]):
                     lora_1 = gr.Dropdown(
                         min_width=240,
@@ -315,7 +306,7 @@ with gr.Blocks(
             with gr.Row():
                 file_format = gr.Dropdown(
                     choices=["png", "jpeg", "webp"],
-                    label="File Format",
+                    label="Format",
                     filterable=False,
                     value="png",
                 )
@@ -342,6 +333,11 @@ with gr.Blocks(
                     elem_classes=["checkbox"],
                     label="Karras σ",
                     value=True,
+                )
+                use_negative_embedding = gr.Checkbox(
+                    elem_classes=["checkbox"],
+                    label="Use negative TI",
+                    value=False,
                 )
                 use_taesd = gr.Checkbox(
                     elem_classes=["checkbox"],
@@ -487,7 +483,6 @@ with gr.Blocks(
             lora_1_weight,
             lora_2,
             lora_2_weight,
-            embeddings,
             style,
             seed,
             model,
@@ -506,6 +501,7 @@ with gr.Blocks(
             use_freeu,
             use_clip_skip,
             use_ip_face,
+            use_negative_embedding,
             DISABLE_IMAGE_PROMPT,
             DISABLE_CONTROL_IMAGE_PROMPT,
             DISABLE_IP_IMAGE_PROMPT,

@@ -41,16 +41,6 @@ Apply up to 2 LoRA (low-rank adaptation) adapters with adjustable strength:
 
 > NB: The trigger words are automatically appended to the positive prompt for you.
 
-### Embeddings
-
-Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/using-diffusers/textual_inversion_inference) embeddings:
-
-* [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057): all-purpose (default, **recommended**)
-* [`cyberrealistic_negative`](https://civitai.com/models/77976?modelVersionId=82745): realistic add-on (for CyberRealistic)
-* [`unrealistic_dream`](https://civitai.com/models/72437?modelVersionId=77173): realistic add-on (for RealisticVision)
-
-> NB: The trigger token is automatically appended to the negative prompt for you.
-
 ### Styles
 
 [Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
@@ -83,7 +73,7 @@ Initial image strength (known as _denoising strength_) is essentially how much t
 
 #### ControlNet
 
-In [ControlNet](https://github.com/lllyasviel/ControlNet), the input image is used to get a feature map from an _annotator_. These are computer vision models used for tasks like edge detection and pose estimation. ControlNet models are trained to understand these feature maps. Read the [Diffusers docs](https://huggingface.co/docs/diffusers/using-diffusers/controlnet) to learn more.
+In [ControlNet](https://github.com/lllyasviel/ControlNet), the input image is used to get a feature map from an _annotator_. These are computer vision models used for tasks like edge detection and pose estimation. ControlNet models are trained to understand these feature maps. Read the [docs](https://huggingface.co/docs/diffusers/using-diffusers/controlnet) to learn more.
 
 Currently, the only annotator available is [Canny](https://huggingface.co/lllyasviel/control_v11p_sd15_canny) (edge detection).
 
@@ -94,6 +84,10 @@ In an image-to-image pipeline, the input image is used as the initial latent. Wi
 For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face and it should be high quality. You can generate fake portraits with Realistic Vision to experiment.
 
 ### Advanced
+
+#### Textual Inversion
+
+Enable `Use negative TI` to append [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057) to your negative prompt. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
 
 #### DeepCache
 

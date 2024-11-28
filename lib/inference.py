@@ -70,7 +70,6 @@ def generate(
     lora_1_weight=0.0,
     lora_2=None,
     lora_2_weight=0.0,
-    embeddings=[],
     style=None,
     seed=None,
     model="Lykon/dreamshaper-8",
@@ -89,6 +88,7 @@ def generate(
     freeu=False,
     clip_skip=False,
     ip_face=False,
+    negative_embedding=False,
     Error=Exception,
     Info=None,
     progress=None,
@@ -193,11 +193,13 @@ def generate(
         pipe.unload_lora_weights()
         raise Error("Error setting LoRA weights")
 
-    # load embeddings
-    embeddings_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "embeddings"))
-    for embedding in embeddings:
+    # Load negative embedding if requested
+    if negative_embedding:
+        embeddings_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "embeddings")
+        )
+        embedding = Config.NEGATIVE_EMBEDDING
         try:
-            # wrap embeddings in angle brackets
             pipe.load_textual_inversion(
                 pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
                 token=f"<{embedding}>",
@@ -219,6 +221,7 @@ def generate(
     images = []
     current_seed = seed
     safe_progress(progress, 0, num_images, f"Generating image 0/{num_images}")
+
     for i in range(num_images):
         try:
             generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
@@ -228,11 +231,11 @@ def generate(
             if negative_styled.startswith("(), "):
                 negative_styled = negative_styled[4:]
 
+            if negative_embedding:
+                negative_styled += f", <{Config.NEGATIVE_EMBEDDING}>"
+
             for lora in loras:
                 positive_styled += f", {Config.CIVIT_LORAS[lora]['trigger']}"
-
-            for embedding in embeddings:
-                negative_styled += f", <{embedding}>"
 
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
                 [compel(positive_styled), compel(negative_styled)]
@@ -273,7 +276,7 @@ def generate(
             images.append((image, str(current_seed)))
             current_seed += 1
         finally:
-            if embeddings:
+            if negative_embedding:
                 pipe.unload_textual_inversion()
             if loras:
                 pipe.unload_lora_weights()

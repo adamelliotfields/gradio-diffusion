@@ -140,12 +140,7 @@ Config = SimpleNamespace(
     ANNOTATORS={
         "canny": "lllyasviel/control_v11p_sd15_canny",
     },
-    EMBEDDING="fast_negative",
-    EMBEDDINGS=[
-        "cyberrealistic_negative",
-        "fast_negative",
-        "unrealistic_dream",
-    ],
+    NEGATIVE_EMBEDDING="fast_negative",
     STYLE="enhance",
     WIDTH=512,
     HEIGHT=512,
