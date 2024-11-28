@@ -4,7 +4,7 @@ from threading import Lock
 import torch
 from DeepCache import DeepCacheSDHelper
 from diffusers import ControlNetModel
-from diffusers.models import AutoencoderKL, AutoencoderTiny
+from diffusers.models import AutoencoderKL
 from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
 
 from .config import Config
@@ -28,20 +28,6 @@ class Loader:
                 cls._instance.ip_adapter = None
                 cls._instance.log = Logger("Loader")
         return cls._instance
-
-    @property
-    def _is_kl_vae(self):
-        if self.pipe is not None:
-            vae_type = type(self.pipe.vae)
-            return issubclass(vae_type, AutoencoderKL)
-        return False
-
-    @property
-    def _is_tiny_vae(self):
-        if self.pipe is not None:
-            vae_type = type(self.pipe.vae)
-            return issubclass(vae_type, AutoencoderTiny)
-        return False
 
     @property
     def _has_freeu(self):
@@ -184,6 +170,7 @@ class Loader:
             to_unload.append("model")
             to_unload.append("pipe")
 
+        # Flush cache and run garbage collector
         clear_cuda_cache()
         for component in to_unload:
             setattr(self, component, None)
@@ -284,32 +271,22 @@ class Loader:
         if self.pipe is not None:
             self.pipe.set_progress_bar_config(disable=progress is not None)
 
-    def _load_vae(self, taesd=False, model=""):
-        # by default all models use KL
-        if self._is_kl_vae and taesd:
-            msg = "Loading Tiny VAE"
-            with timer(msg, logger=self.log.info):
-                self.pipe.vae = AutoencoderTiny.from_pretrained(
-                    pretrained_model_name_or_path="madebyollin/taesd",
+    # Handle single-file and diffusers-style models
+    def _load_vae(self, model=""):
+        msg = "Loading VAE"
+        with timer(msg, logger=self.log.info):
+            if model.lower() in Config.MODEL_CHECKPOINTS.keys():
+                self.pipe.vae = AutoencoderKL.from_single_file(
+                    f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
                     torch_dtype=self.pipe.dtype,
                 ).to(self.pipe.device)
-            return
-
-        if self._is_tiny_vae and not taesd:
-            msg = "Loading KL VAE"
-            with timer(msg, logger=self.log.info):
-                if model.lower() in Config.MODEL_CHECKPOINTS.keys():
-                    self.pipe.vae = AutoencoderKL.from_single_file(
-                        f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
-                        torch_dtype=self.pipe.dtype,
-                    ).to(self.pipe.device)
-                else:
-                    self.pipe.vae = AutoencoderKL.from_pretrained(
-                        pretrained_model_name_or_path=model,
-                        torch_dtype=self.pipe.dtype,
-                        subfolder="vae",
-                        variant="fp16",
-                    ).to(self.pipe.device)
+            else:
+                self.pipe.vae = AutoencoderKL.from_pretrained(
+                    pretrained_model_name_or_path=model,
+                    torch_dtype=self.pipe.dtype,
+                    subfolder="vae",
+                    variant="fp16",
+                ).to(self.pipe.device)
 
     def load(
         self,
@@ -321,7 +298,6 @@ class Loader:
         deepcache,
         scale,
         karras,
-        taesd,
         freeu,
         progress,
     ):
@@ -397,11 +373,12 @@ class Loader:
             if not same_scheduler or not same_karras:
                 self.pipe.scheduler = Config.SCHEDULERS[scheduler](**scheduler_kwargs)
 
+        # Load VAE
+        self._load_vae(model)
+
         CURRENT_STEP = 1
         TOTAL_STEPS = sum(
             [
-                self._is_kl_vae and taesd,
-                self._is_tiny_vae and not taesd,
                 self._should_load_freeu(freeu),
                 self._should_load_deepcache(deepcache),
                 self._should_load_ip_adapter(ip_adapter),
@@ -427,9 +404,4 @@ class Loader:
 
         if self._should_load_upscaler(scale):
             self._load_upscaler(scale)
-            safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)
-            CURRENT_STEP += 1
-
-        if self._is_kl_vae and taesd or self._is_tiny_vae and not taesd:
-            self._load_vae(taesd, model)
             safe_progress(progress, CURRENT_STEP, TOTAL_STEPS, desc)

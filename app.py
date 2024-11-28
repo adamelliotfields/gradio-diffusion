@@ -302,11 +302,6 @@ with gr.Blocks(
                     label="Use negative TI",
                     value=False,
                 )
-                use_taesd = gr.Checkbox(
-                    elem_classes=["checkbox"],
-                    label="Tiny VAE",
-                    value=False,
-                )
                 use_freeu = gr.Checkbox(
                     elem_classes=["checkbox"],
                     label="FreeU",
@@ -456,7 +451,6 @@ with gr.Blocks(
             scale,
             num_images,
             use_karras,
-            use_taesd,
             use_freeu,
             use_clip_skip,
             use_ip_face,

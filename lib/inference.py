@@ -80,7 +80,6 @@ def generate(
     scale=1,
     num_images=1,
     karras=False,
-    taesd=False,
     freeu=False,
     clip_skip=False,
     ip_face=False,
@@ -144,7 +143,6 @@ def generate(
         deepcache,
         scale,
         karras,
-        taesd,
         freeu,
         progress,
     )

@@ -60,14 +60,13 @@ preload_from_hub:  # up to 10
 # diffusion
 
 Gradio app for Stable Diffusion 1.5 featuring:
-* txt2img and img2img pipelines with ControlNet and IP-Adapter
-* Canny edge detection (more preprocessors coming soon)
+* txt2img and img2img pipelines with IP-Adapter
+* ControlNet with Canny edge detection (more preprocessors coming soon)
 * Compel prompt weighting
 * Hand-written style templates
 * Multiple samplers with Karras scheduling
 * DeepCache, FreeU, and Clip Skip available
 * Real-ESRGAN upscaling
-* Optional tiny autoencoder
 
 ## Usage
 

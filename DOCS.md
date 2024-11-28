@@ -95,7 +95,3 @@ Enable `Use negative TI` to append [`fast_negative`](https://civitai.com/models/
 #### Clip Skip
 
 When enabled, the last CLIP layer is skipped. Can sometimes improve image quality.
-
-#### Tiny VAE
-
-Enable [madebyollin/taesd](https://github.com/madebyollin/taesd) for near-instant latent decoding with a minor loss in detail. Useful for development.

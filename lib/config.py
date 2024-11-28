@@ -68,7 +68,6 @@ Config = SimpleNamespace(
         "Linaqruf/anything-v3-1": ["anything-v3-2.safetensors"],
         "lllyasviel/control_v11p_sd15_canny": ["diffusion_pytorch_model.fp16.safetensors"],
         "Lykon/dreamshaper-8": [*sd_files],
-        "madebyollin/taesd": ["diffusion_pytorch_model.safetensors"],
         "prompthero/openjourney-v4": ["openjourney-v4.ckpt"],
         "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
         "XpucT/Deliberate": ["Deliberate_v6.safetensors"],
