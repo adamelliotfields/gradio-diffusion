@@ -9,6 +9,7 @@ from typing import Callable, Tuple, TypeVar
 import anyio
 import httpx
 import numpy as np
+import torch
 from anyio import Semaphore
 from diffusers.utils import logging as diffusers_logging
 from huggingface_hub._snapshot_download import snapshot_download
@@ -64,6 +65,14 @@ def enable_progress_bars():
 def safe_progress(progress, current=0, total=0, desc=""):
     if progress is not None:
         progress((current, total), desc=desc)
+
+
+def clear_cuda_cache():
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.synchronize()
 
 
 def download_repo_files(repo_id, allow_patterns, token=None):

@@ -19,12 +19,6 @@ This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/
 | `(blue)1.2` | `(blue:1.2)`  |
 | `(blue)0.8` | `(blue:0.8)`  |
 
-#### Arrays
-
-Arrays allow you to generate multiple different images from a single prompt. For example, `an adult [[blonde,brunette]] [[man,woman]]` will expand into **4** different prompts. This implementation was inspired by [Fooocus](https://github.com/lllyasviel/Fooocus/pull/1503).
-
-> NB: Make sure to set `Images` to the number of images you want to generate. Otherwise, only the first prompt will be used.
-
 ### Models
 
 Each model checkpoint has a different aesthetic:
@@ -61,7 +55,7 @@ Select one or more [textual inversion](https://huggingface.co/docs/diffusers/en/
 
 [Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
 
-Start by framing a simple subject like `portrait of a young adult woman` or `landscape of a mountain range` and experiment.
+Start by framing a simple subject like `portrait of a cat` or `landscape of a mountain range` and experiment.
 
 #### Anime
 
@@ -79,7 +73,7 @@ Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) wit
 
 ### Image-to-Image
 
-The `🖼️ Image` tab enables the image-to-image and IP-Adapter pipelines.
+The `Image-to-Image` settings allows you to provide input images for the initial latents, ControlNet, and IP-Adapter.
 
 #### Strength
 

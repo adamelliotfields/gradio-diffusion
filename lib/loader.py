@@ -10,7 +10,7 @@ from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttn
 from .config import Config
 from .logger import Logger
 from .upscaler import RealESRGAN
-from .utils import safe_progress, timer
+from .utils import clear_cuda_cache, safe_progress, timer
 
 
 class Loader:
@@ -184,10 +184,10 @@ class Loader:
             to_unload.append("model")
             to_unload.append("pipe")
 
-        self.collect()
+        clear_cuda_cache()
         for component in to_unload:
             setattr(self, component, None)
-            gc.collect()
+        gc.collect()
 
     def _should_load_upscaler(self, scale=1):
         if self.upscaler is None and scale > 1:
@@ -310,12 +310,6 @@ class Loader:
                         subfolder="vae",
                         variant="fp16",
                     ).to(self.pipe.device)
-
-    def collect(self):
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-        torch.cuda.reset_peak_memory_stats()
-        torch.cuda.synchronize()
 
     def load(
         self,

@@ -1,9 +1,6 @@
-import gc
 import os
-import re
 import time
 from datetime import datetime
-from itertools import product
 
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
@@ -16,6 +13,7 @@ from .loader import Loader
 from .logger import Logger
 from .utils import (
     annotate_image,
+    clear_cuda_cache,
     load_json,
     resize_image,
     safe_progress,
@@ -23,25 +21,7 @@ from .utils import (
 )
 
 
-def parse_prompt_with_arrays(prompt: str) -> list[str]:
-    arrays = re.findall(r"\[\[(.*?)\]\]", prompt)
-
-    if not arrays:
-        return [prompt]
-
-    tokens = [item.split(",") for item in arrays]  # [("a", "b"), ("1", "2")]
-    combinations = list(product(*tokens))  # [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2")]
-
-    # find all the arrays in the prompt and replace them with tokens
-    prompts = []
-    for combo in combinations:
-        current_prompt = prompt
-        for i, token in enumerate(combo):
-            current_prompt = current_prompt.replace(f"[[{arrays[i]}]]", token.strip(), 1)
-        prompts.append(current_prompt)
-    return prompts
-
-
+# Inject prompts into style templates
 def apply_style(positive_prompt, negative_prompt, style_id="none"):
     if style_id.lower() == "none":
         return (positive_prompt, negative_prompt)
@@ -78,6 +58,7 @@ def gpu_duration(**kwargs):
     return loading + (duration * num_images)
 
 
+# Request GPU when deployed to Hugging Face
 @GPU(duration=gpu_duration)
 def generate(
     positive_prompt,
@@ -143,7 +124,7 @@ def generate(
     else:
         IP_ADAPTER = ""
 
-    # custom progress bar for multiple images
+    # Custom progress bar for multiple images
     def callback_on_step_end(pipeline, step, timestep, latents):
         nonlocal CURRENT_STEP, CURRENT_IMAGE
         if progress is not None:
@@ -224,7 +205,7 @@ def generate(
         except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
             raise Error(f"Invalid embedding: {embedding}")
 
-    # prompt embeds
+    # Embed prompts with weights
     compel = Compel(
         device=pipe.device,
         tokenizer=pipe.tokenizer,
@@ -241,15 +222,9 @@ def generate(
     for i in range(num_images):
         try:
             generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
+            positive_styled, negative_styled = apply_style(positive_prompt, negative_prompt, style)
 
-            positive_prompts = parse_prompt_with_arrays(positive_prompt)
-            index = i % len(positive_prompts)
-            positive_styled, negative_styled = apply_style(
-                positive_prompts[index],
-                negative_prompt,
-                style,
-            )
-
+            # User didn't provide a negative prompt
             if negative_styled.startswith("(), "):
                 negative_styled = negative_styled[4:]
 
@@ -305,6 +280,7 @@ def generate(
             CURRENT_STEP = 0
             CURRENT_IMAGE += 1
 
+    # Upscale
     if scale > 1:
         msg = f"Upscaling {scale}x"
         with timer(msg, logger=log.info):
@@ -314,13 +290,15 @@ def generate(
                 images[i] = image
                 safe_progress(progress, i + 1, num_images, desc=msg)
 
-    # cleanup
-    loader.collect()
-    gc.collect()
+    # Flush memory after generating
+    clear_cuda_cache()
 
     end = time.perf_counter()
     msg = f"Generating {len(images)} image{'s' if len(images) > 1 else ''} took {end - start:.2f}s"
     log.info(msg)
+
+    # Alert if notifier provided
     if Info:
         Info(msg)
+
     return images
