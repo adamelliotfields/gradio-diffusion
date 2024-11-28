@@ -4,7 +4,6 @@ from threading import Lock
 import torch
 from DeepCache import DeepCacheSDHelper
 from diffusers import ControlNetModel
-from diffusers.models import AutoencoderKL
 from diffusers.models.attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
 
 from .config import Config
@@ -238,23 +237,6 @@ class Loader:
         if self.pipe is not None:
             self.pipe.set_progress_bar_config(disable=progress is not None)
 
-    # Handle single-file and diffusers-style models
-    def _load_vae(self, model=""):
-        msg = "Loading VAE"
-        with timer(msg, logger=self.log.info):
-            if model.lower() in Config.MODEL_CHECKPOINTS.keys():
-                self.pipe.vae = AutoencoderKL.from_single_file(
-                    f"https://huggingface.co/{model}/{Config.MODEL_CHECKPOINTS[model.lower()]}",
-                    torch_dtype=self.pipe.dtype,
-                ).to(self.pipe.device)
-            else:
-                self.pipe.vae = AutoencoderKL.from_pretrained(
-                    pretrained_model_name_or_path=model,
-                    torch_dtype=self.pipe.dtype,
-                    subfolder="vae",
-                    variant="fp16",
-                ).to(self.pipe.device)
-
     def load(
         self,
         kind,
@@ -267,8 +249,6 @@ class Loader:
         karras,
         progress,
     ):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         scheduler_kwargs = {
             "beta_schedule": "scaled_linear",
             "timestep_spacing": "leading",
@@ -297,16 +277,8 @@ class Loader:
         else:
             pipe_kwargs["variant"] = None
 
-        # convert fp32 to bf16 if possible
-        if model.lower() in ["linaqruf/anything-v3-1"]:
-            pipe_kwargs["torch_dtype"] = (
-                torch.bfloat16
-                if torch.cuda.get_device_properties(device).major >= 8
-                else torch.float16
-            )
-        else:
-            # defaults to float32
-            pipe_kwargs["torch_dtype"] = torch.float16
+        # converts to fp32 by default
+        pipe_kwargs["torch_dtype"] = torch.float16
 
         # config maps the repo to the ID: canny -> lllyasviel/control_sd15_canny
         if kind.startswith("controlnet_"):
@@ -338,9 +310,6 @@ class Loader:
                 self.log.info(f"{'Enabling' if karras else 'Disabling'} Karras sigmas")
             if not same_scheduler or not same_karras:
                 self.pipe.scheduler = Config.SCHEDULERS[scheduler](**scheduler_kwargs)
-
-        # Load VAE
-        self._load_vae(model)
 
         CURRENT_STEP = 1
         TOTAL_STEPS = sum(

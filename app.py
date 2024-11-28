@@ -185,12 +185,14 @@ with gr.Blocks(
                 negative_prompt = gr.Textbox(
                     label="Negative Prompt",
                     value="nsfw+",
+                    min_width=320,
                     lines=1,
                 )
                 styles = json.loads(read_file("data/styles.json"))
                 style_ids = list(styles.keys())
                 style_ids = [sid for sid in style_ids if not sid.startswith("_")]
                 style = gr.Dropdown(
+                    min_width=320,
                     value=Config.STYLE,
                     label="Style Template",
                     choices=[("None", "none")] + [(styles[sid]["name"], sid) for sid in style_ids],
@@ -345,17 +347,17 @@ with gr.Blocks(
                 )
             with gr.Row():
                 disable_image = gr.Checkbox(
-                    label="Disable Initial Image",
+                    label="Disable initial image",
                     elem_classes=["checkbox"],
                     value=False,
                 )
                 disable_control_image = gr.Checkbox(
-                    label="Disable ControlNet Image",
+                    label="Disable ControlNet",
                     elem_classes=["checkbox"],
                     value=False,
                 )
                 disable_ip_image = gr.Checkbox(
-                    label="Disable IP-Adapter Image",
+                    label="Disable IP-Adapter",
                     elem_classes=["checkbox"],
                     value=False,
                 )
@@ -413,6 +415,7 @@ with gr.Blocks(
         fn=lambda image, control_image, ip_image: (image, control_image, ip_image),
         inputs=[disable_image, disable_control_image, disable_ip_image],
         outputs=[DISABLE_IMAGE_PROMPT, DISABLE_CONTROL_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT],
+        show_api=False,
     )
 
     # Generate images

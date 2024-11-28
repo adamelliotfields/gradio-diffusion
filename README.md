@@ -15,22 +15,22 @@ header: mini
 license: apache-2.0
 models:
 - ai-forever/Real-ESRGAN
-- Comfy-Org/stable-diffusion-v1-5-archive
 - cyberdelia/CyberRealistic
+- dreamlike-art/dreamlike-photoreal-2.0
 - fluently/Fluently-v4
 - h94/IP-Adapter
-- Linaqruf/anything-v3-1
 - Lykon/dreamshaper-8
-- prompthero/openjourney-v4
+- s6yx/ReV_Animated
 - SG161222/Realistic_Vision_V5.1_noVAE
+- stable-diffusion-v1-5/stable-diffusion-v1-5
 - XpucT/Deliberate
 preload_from_hub:  # up to 10
 - >-
-  Comfy-Org/stable-diffusion-v1-5-archive
-  v1-5-pruned-emaonly-fp16.safetensors
-- >-
   cyberdelia/CyberRealistic
   CyberRealistic_V5_FP16.safetensors
+- >-
+  dreamlike-art/dreamlike-photoreal-2.0
+  dreamlike-photoreal-2.0.safetensors
 - >-
   fluently/Fluently-v4
   Fluently-v4.safetensors
@@ -38,20 +38,20 @@ preload_from_hub:  # up to 10
   h94/IP-Adapter
   models/ip-adapter-full-face_sd15.safetensors,models/ip-adapter-plus_sd15.safetensors,models/image_encoder/model.safetensors
 - >-
-  Linaqruf/anything-v3-1
-  anything-v3-2.safetensors
-- >-
   lllyasviel/control_v11p_sd15_canny
   diffusion_pytorch_model.fp16.safetensors
 - >-
   Lykon/dreamshaper-8
   feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
 - >-
-  prompthero/openjourney-v4
-  openjourney-v4.ckpt
+  s6yx/ReV_Animated
+  rev_1.2.2/rev_1.2.2-fp16.safetensors
 - >-
   SG161222/Realistic_Vision_V5.1_noVAE
   Realistic_Vision_V5.1_fp16-no-ema.safetensors
+- >-
+  stable-diffusion-v1-5/stable-diffusion-v1-5
+  feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
 - >-
   XpucT/Deliberate
   Deliberate_v6.safetensors
@@ -83,7 +83,7 @@ git remote set-url origin https://adamelliotfields:$HF_TOKEN@huggingface.co/spac
 # install
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt torch==2.4.0 torchvision==0.19.0
+pip install -r requirements.txt
 
 # gradio
 python app.py --port 7860

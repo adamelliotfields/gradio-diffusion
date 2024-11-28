@@ -10,9 +10,9 @@ Use `+` or `-` to increase the weight of a token. The weight grows exponentially
 
 Groups of tokens can be weighted together by wrapping in parantheses and multiplying by a float between 0 and 2. For example, `(masterpiece, best quality)1.2` will increase the weight of both `masterpiece` and `best quality` by 1.2x.
 
-This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from AUTOMATIC1111:
+This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from [A1111](https://github.com/AUTOMATIC1111/stable-diffusion-webui):
 
-| Compel      | AUTOMATIC1111 |
+| Compel      | A1111         |
 | ----------- | ------------- |
 | `blue++`    | `((blue))`    |
 | `blue--`    | `[[blue]]`    |
@@ -21,32 +21,22 @@ This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/
 
 ### Models
 
-Each model checkpoint has a different aesthetic:
+Some require specific parameters to get the best results, so check the model's link for more information:
 
-* [Comfy-Org/stable-diffusion-v1-5](https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive): base
-* [cyberdelia/CyberRealistic_V5](https://huggingface.co/cyberdelia/CyberRealistic): realistic
-* [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8): general purpose (default)
-* [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4): general purpose stylized
-* [Linaqruf/anything-v3-1](https://huggingface.co/Linaqruf/anything-v3-1): anime
-* [prompthero/openjourney-v4](https://huggingface.co/prompthero/openjourney-v4): Midjourney art style
-* [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE): realistic
-* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate): general purpose stylized
+* [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)(default)
+* [cyberdelia/CyberRealistic_V5](https://huggingface.co/cyberdelia/CyberRealistic)
+* [dreamlike-art/dreamlike-photoreal-2.0](https://huggingface.co/dreamlike-art/dreamlike-photoreal-2.0)
+* [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4)
+* [s6yx/ReV_Animated](https://huggingface.co/s6yx/ReV_Animated)
+* [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
+* [stable-diffusion-v1-5/stable-diffusion-v1-5](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5)
+* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate)
 
 ### Styles
 
-[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. They were originally derived from the [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler) Comfy node, but have since been entirely rewritten.
+[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. Inspired by [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler).
 
-Start by framing a simple subject like `portrait of a cat` or `landscape of a mountain range` and experiment.
-
-#### Anime
-
-The `Anime: *` styles work the best with Dreamshaper. When using the anime-specific Anything model, you should use the `Anime: Anything` style with the following settings:
-
-* Scheduler: `DEIS 2M` or `DPM++ 2M`
-* Guidance: `10`
-* Steps: `50`
-
-You subject should be a few simple tokens like `girl, brunette, blue eyes, armor, nebula, celestial`. Experiment with `Clip Skip` and `Karras`. 
+> 💡 When using syles, start with a simple prompt like `portrait of a cat` or `landscape of a mountain range`.
 
 ### Scale
 
@@ -54,7 +44,7 @@ Rescale up to 4x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) wit
 
 ### Image-to-Image
 
-The `Image-to-Image` settings allows you to provide input images for the initial latents, ControlNet, and IP-Adapter.
+The `Image-to-Image` settings allows you to provide input images for the initial latent, ControlNet, and IP-Adapter.
 
 #### Strength
 
@@ -70,7 +60,7 @@ Currently, the only annotator available is [Canny](https://huggingface.co/lllyas
 
 #### IP-Adapter
 
-In an image-to-image pipeline, the input image is used as the initial latent. With [IP-Adapter](https://github.com/tencent-ailab/IP-Adapter), the input image is processed by a separate image encoder and the encoded features are used as conditioning along with the text prompt.
+In an image-to-image pipeline, the input image is used as the initial latent representation. With [IP-Adapter](https://github.com/tencent-ailab/IP-Adapter), the image is processed by a separate image encoder and the encoded features are used as conditioning along with the text prompt.
 
 For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face and it should be high quality. You can generate fake portraits with Realistic Vision to experiment.
 
@@ -82,7 +72,7 @@ Enable `Use negative TI` to append [`fast_negative`](https://civitai.com/models/
 
 #### DeepCache
 
-[DeepCache](https://github.com/horseee/DeepCache) caches lower UNet layers and reuses them every `Interval` steps. Trade quality for speed:
+[DeepCache](https://github.com/horseee/DeepCache) caches lower UNet layers and reuses them every _n_ steps. Trade quality for speed:
 * `1`: no caching (default)
 * `2`: more quality
 * `3`: balanced
