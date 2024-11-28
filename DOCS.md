@@ -8,7 +8,7 @@ Positive and negative prompts are embedded by [Compel](https://github.com/damian
 
 Use `+` or `-` to increase the weight of a token. The weight grows exponentially when chained. For example, `blue+` means 1.1x more attention is given to `blue`, while `blue++` means 1.1^2 more, and so on. The same applies to `-`.
 
-Groups of tokens can be weighted together by wrapping in parantheses and multiplying by a float between 0 and 2. For example, `(masterpiece, best quality)1.2` will increase the weight of both `masterpiece` and `best quality` by 1.2x.
+Groups of tokens can be weighted together by wrapping in parentheses and multiplying by a float between 0 and 2. For example, `(masterpiece, best quality)1.2` will increase the weight of both `masterpiece` and `best quality` by 1.2x.
 
 This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from [A1111](https://github.com/AUTOMATIC1111/stable-diffusion-webui):
 
@@ -25,12 +25,12 @@ Some require specific parameters to get the best results, so check the model's l
 
 * [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)(default)
 * [cyberdelia/CyberRealistic_V5](https://huggingface.co/cyberdelia/CyberRealistic)
-* [dreamlike-art/dreamlike-photoreal-2.0](https://huggingface.co/dreamlike-art/dreamlike-photoreal-2.0)
 * [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4)
 * [s6yx/ReV_Animated](https://huggingface.co/s6yx/ReV_Animated)
 * [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
 * [stable-diffusion-v1-5/stable-diffusion-v1-5](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5)
 * [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate)
+* [XpucT/Reliberate_v3](https://huggingface.co/XpucT/Reliberate)
 
 ### Styles
 

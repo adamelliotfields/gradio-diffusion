@@ -63,7 +63,6 @@ Config = SimpleNamespace(
         # downloaded on startup
         "ai-forever/Real-ESRGAN": ["RealESRGAN_x2.pth", "RealESRGAN_x4.pth"],
         "cyberdelia/CyberRealistic": ["CyberRealistic_V5_FP16.safetensors"],
-        "dreamlike-art/dreamlike-photoreal-2.0": ["dreamlike-photoreal-2.0.safetensors"],
         "fluently/Fluently-v4": ["Fluently-v4.safetensors"],
         "lllyasviel/control_v11p_sd15_canny": ["diffusion_pytorch_model.fp16.safetensors"],
         "Lykon/dreamshaper-8": [*sd_files],
@@ -71,6 +70,7 @@ Config = SimpleNamespace(
         "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
         "stable-diffusion-v1-5/stable-diffusion-v1-5": [*sd_files],
         "XpucT/Deliberate": ["Deliberate_v6.safetensors"],
+        "XpucT/Reliberate": ["Reliberate_v3.safetensors"],
     },
     MONO_FONTS=["monospace"],
     SANS_FONTS=[
@@ -89,23 +89,23 @@ Config = SimpleNamespace(
     MODEL="Lykon/dreamshaper-8",
     MODELS=[
         "cyberdelia/CyberRealistic",
-        "dreamlike-art/dreamlike-photoreal-2.0",
         "fluently/Fluently-v4",
         "Lykon/dreamshaper-8",
         "s6yx/ReV_Animated",
         "SG161222/Realistic_Vision_V5.1_noVAE",
         "stable-diffusion-v1-5/stable-diffusion-v1-5",
         "XpucT/Deliberate",
+        "XpucT/Reliberate",
     ],
     # Single-file model weights
     MODEL_CHECKPOINTS={
         # keep keys lowercase for case-insensitive matching in the loader
         "cyberdelia/cyberrealistic": "CyberRealistic_V5_FP16.safetensors",
-        "dreamlike-art/dreamlike-photoreal-2.0": "dreamlike-photoreal-2.0.safetensors",
         "fluently/fluently-v4": "Fluently-v4.safetensors",
         "s6yx/rev_animated": "rev_1.2.2/rev_1.2.2-fp16.safetensors",
         "sg161222/realistic_vision_v5.1_novae": "Realistic_Vision_V5.1_fp16-no-ema.safetensors",
         "xpuct/deliberate": "Deliberate_v6.safetensors",
+        "xpuct/reliberate": "Reliberate_v3.safetensors",
     },
     SCHEDULER="UniPC 2M",
     SCHEDULERS={

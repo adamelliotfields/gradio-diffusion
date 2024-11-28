@@ -16,7 +16,6 @@ license: apache-2.0
 models:
 - ai-forever/Real-ESRGAN
 - cyberdelia/CyberRealistic
-- dreamlike-art/dreamlike-photoreal-2.0
 - fluently/Fluently-v4
 - h94/IP-Adapter
 - Lykon/dreamshaper-8
@@ -24,13 +23,11 @@ models:
 - SG161222/Realistic_Vision_V5.1_noVAE
 - stable-diffusion-v1-5/stable-diffusion-v1-5
 - XpucT/Deliberate
+- XpucT/Reliberate
 preload_from_hub:  # up to 10
 - >-
   cyberdelia/CyberRealistic
   CyberRealistic_V5_FP16.safetensors
-- >-
-  dreamlike-art/dreamlike-photoreal-2.0
-  dreamlike-photoreal-2.0.safetensors
 - >-
   fluently/Fluently-v4
   Fluently-v4.safetensors
@@ -55,6 +52,9 @@ preload_from_hub:  # up to 10
 - >-
   XpucT/Deliberate
   Deliberate_v6.safetensors
+- >-
+  XpucT/Deliberate
+  Reliberate_v3.safetensors
 ---
 
 # diffusion
