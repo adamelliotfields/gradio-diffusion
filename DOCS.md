@@ -49,13 +49,13 @@ Currently, the only annotator available is [Canny](https://huggingface.co/lllyas
 
 In an image-to-image pipeline, the input image is used as the initial latent representation. With [IP-Adapter](https://github.com/tencent-ailab/IP-Adapter), the image is processed by a separate image encoder and the encoded features are used as conditioning along with the text prompt.
 
-For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face and it should be high quality. You can generate fake portraits with Realistic Vision to experiment.
+For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face and it should be high quality.
 
 ### Advanced
 
 #### Textual Inversion
 
-Enable `Use negative TI` to append [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057) to your negative prompt. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
+Add `<fast_negative>` anywhere in your negative prompt to apply the [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057) textual inversion embedding. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
 
 #### DeepCache
 

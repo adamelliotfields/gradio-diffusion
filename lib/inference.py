@@ -50,7 +50,7 @@ def generate(
     annotator="canny",
     width=512,
     height=512,
-    guidance_scale=7.5,
+    guidance_scale=6.0,
     inference_steps=40,
     denoising_strength=0.8,
     deepcache=1,
@@ -58,7 +58,6 @@ def generate(
     num_images=1,
     karras=False,
     ip_face=False,
-    negative_embedding=False,
     Error=Exception,
     Info=None,
     progress=None,
@@ -84,6 +83,8 @@ def generate(
     KIND = f"controlnet_{KIND}" if control_image_prompt is not None else KIND
 
     EMBEDDINGS_TYPE = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
+
+    FAST_NEGATIVE = "<fast_negative>" in negative_prompt
 
     if ip_image_prompt:
         IP_ADAPTER = "full-face" if ip_face else "plus"
@@ -123,19 +124,15 @@ def generate(
     pipe = loader.pipe
     upscaler = loader.upscaler
 
-    # Load negative embedding if requested
-    if negative_embedding:
+    # Load fast negative embedding
+    if FAST_NEGATIVE:
         embeddings_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "embeddings")
         )
-        embedding = Config.NEGATIVE_EMBEDDING
-        try:
-            pipe.load_textual_inversion(
-                pretrained_model_name_or_path=f"{embeddings_dir}/{embedding}.pt",
-                token=f"<{embedding}>",
-            )
-        except (EnvironmentError, HFValidationError, RepositoryNotFoundError):
-            raise Error(f"Invalid embedding: {embedding}")
+        pipe.load_textual_inversion(
+            pretrained_model_name_or_path=f"{embeddings_dir}/fast_negative.pt",
+            token="<fast_negative>",
+        )
 
     # Embed prompts with weights
     compel = Compel(
@@ -155,10 +152,6 @@ def generate(
     for i in range(num_images):
         try:
             generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
-
-            if negative_embedding:
-                negative_prompt += f", <{Config.NEGATIVE_EMBEDDING}>"
-
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
                 [compel(positive_prompt), compel(negative_prompt)]
             )
@@ -198,8 +191,9 @@ def generate(
             images.append((image, str(current_seed)))
             current_seed += 1
         finally:
-            if negative_embedding:
+            if FAST_NEGATIVE:
                 pipe.unload_textual_inversion()
+
             CURRENT_STEP = 0
             CURRENT_IMAGE += 1
 

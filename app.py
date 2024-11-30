@@ -184,7 +184,7 @@ with gr.Blocks(
             with gr.Row():
                 negative_prompt = gr.Textbox(
                     label="Negative Prompt",
-                    value="nsfw",
+                    value="nsfw, <fast_negative>",
                     lines=1,
                 )
 
@@ -288,11 +288,6 @@ with gr.Blocks(
                     elem_classes=["checkbox"],
                     label="Karras σ",
                     value=True,
-                )
-                use_negative_embedding = gr.Checkbox(
-                    elem_classes=["checkbox"],
-                    label="Use negative TI",
-                    value=False,
                 )
 
             # Image-to-Image settings
@@ -434,7 +429,6 @@ with gr.Blocks(
             num_images,
             use_karras,
             use_ip_face,
-            use_negative_embedding,
             DISABLE_IMAGE_PROMPT,
             DISABLE_CONTROL_IMAGE_PROMPT,
             DISABLE_IP_IMAGE_PROMPT,
