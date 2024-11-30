@@ -53,7 +53,7 @@ preload_from_hub:  # up to 10
   XpucT/Deliberate
   Deliberate_v6.safetensors
 - >-
-  XpucT/Deliberate
+  XpucT/Reliberate
   Reliberate_v3.safetensors
 ---
 

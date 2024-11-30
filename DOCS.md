@@ -22,8 +22,8 @@ Some require specific parameters to get the best results, so check the model's l
 * [s6yx/ReV_Animated](https://huggingface.co/s6yx/ReV_Animated)
 * [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
 * [stable-diffusion-v1-5/stable-diffusion-v1-5](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5)
-* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate) (default)
-* [XpucT/Reliberate_v3](https://huggingface.co/XpucT/Reliberate)
+* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate)
+* [XpucT/Reliberate_v3](https://huggingface.co/XpucT/Reliberate) (default)
 
 ### Scale
 
