@@ -258,12 +258,6 @@ with gr.Blocks(
                     ],
                 )
             with gr.Row():
-                file_format = gr.Dropdown(
-                    choices=["png", "jpeg", "webp"],
-                    label="Format",
-                    filterable=False,
-                    value="png",
-                )
                 num_images = gr.Dropdown(
                     choices=list(range(1, 5)),
                     value=Config.NUM_IMAGES,
@@ -362,19 +356,6 @@ with gr.Blocks(
 
     # Update seed button hover text
     seed.change(None, inputs=[seed], outputs=[], js=seed_js)
-
-    # Update image prompts file format
-    file_format.change(
-        lambda f: (
-            gr.Gallery(format=f),
-            gr.Image(format=f),
-            gr.Image(format=f),
-            gr.Image(format=f),
-        ),
-        inputs=[file_format],
-        outputs=[output_images, image_prompt, control_image_prompt, ip_image_prompt],
-        show_api=False,
-    )
 
     # Update width and height on aspect ratio change
     aspect_ratio.input(
