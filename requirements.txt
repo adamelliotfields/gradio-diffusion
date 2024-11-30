@@ -4,7 +4,7 @@ controlnet-aux==0.0.9
 deepcache==0.1.1
 diffusers==0.30.3
 einops==0.8.0
-gradio==4.44.0
+gradio==4.44.1
 h2
 hf-transfer
 httpx

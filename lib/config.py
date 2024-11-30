@@ -86,7 +86,7 @@ Config = SimpleNamespace(
         "controlnet_txt2img": CustomStableDiffusionControlNetPipeline,
         "controlnet_img2img": CustomStableDiffusionControlNetImg2ImgPipeline,
     },
-    MODEL="XpucT/Deliberate",
+    MODEL="XpucT/Reliberate",
     MODELS=[
         "cyberdelia/CyberRealistic",
         "fluently/Fluently-v4",

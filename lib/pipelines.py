@@ -25,7 +25,7 @@ from huggingface_hub.utils import validate_hf_hub_args
 
 class CustomDiffusionMixin:
     r"""
-    Overrides DiffusionPipeline methods.
+    Overrides DiffusionPipeline `from_pretrained` and `from_single_file` methods to allow passing a progress function.
     """
 
     # Copied from https://github.com/huggingface/diffusers/blob/v0.30.3/src/diffusers/pipelines/pipeline_utils.py#L480

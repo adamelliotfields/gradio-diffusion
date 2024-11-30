@@ -6,7 +6,7 @@ emoji: 🧨
 colorFrom: purple
 colorTo: blue
 sdk: gradio
-sdk_version: 4.44.0
+sdk_version: 4.44.1
 python_version: 3.11.9
 app_file: app.py
 fullWidth: false

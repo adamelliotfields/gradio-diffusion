@@ -57,6 +57,8 @@ For capturing faces, enable `IP-Adapter Face` to use the full-face model. You sh
 
 Add `<fast_negative>` anywhere in your negative prompt to apply the [FastNegative v2](https://civitai.com/models/71961?modelVersionId=94057) textual inversion embedding. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
 
+> 💡 Wrap in parens to weight the embedding like `(<fast_negative>)0.8`.
+
 #### DeepCache
 
 [DeepCache](https://github.com/horseee/DeepCache) caches lower UNet layers and reuses them every _n_ steps. Trade quality for speed:
