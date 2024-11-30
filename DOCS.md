@@ -4,7 +4,7 @@ TL;DR: Enter a prompt or roll the `🎲` and press `Generate`.
 
 ### Prompting
 
-Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel) for weighting. See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more.
+Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel). See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more.
 
 #### Weighting
 
@@ -16,13 +16,13 @@ Groups of tokens can be weighted together by wrapping in parentheses and multipl
 
 Some require specific parameters to get the best results, so check the model's link for more information:
 
-* [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)(default)
 * [cyberdelia/CyberRealistic_V5](https://huggingface.co/cyberdelia/CyberRealistic)
 * [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4)
+* [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)
 * [s6yx/ReV_Animated](https://huggingface.co/s6yx/ReV_Animated)
 * [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
 * [stable-diffusion-v1-5/stable-diffusion-v1-5](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5)
-* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate)
+* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate) (default)
 * [XpucT/Reliberate_v3](https://huggingface.co/XpucT/Reliberate)
 
 ### Scale
@@ -55,7 +55,7 @@ For capturing faces, enable `IP-Adapter Face` to use the full-face model. You sh
 
 #### Textual Inversion
 
-Add `<fast_negative>` anywhere in your negative prompt to apply the [`fast_negative`](https://civitai.com/models/71961?modelVersionId=94057) textual inversion embedding. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
+Add `<fast_negative>` anywhere in your negative prompt to apply the [FastNegative v2](https://civitai.com/models/71961?modelVersionId=94057) textual inversion embedding. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
 
 #### DeepCache
 

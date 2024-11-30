@@ -38,9 +38,10 @@ def timer(message="Operation", logger=print):
 
 
 @functools.lru_cache()
-def load_json(path: str) -> dict:
+def read_json(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as file:
-        return json.load(file)
+        data = json.load(file)
+        return json.dumps(data, indent=4)
 
 
 @functools.lru_cache()

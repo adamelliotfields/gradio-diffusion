@@ -86,7 +86,7 @@ Config = SimpleNamespace(
         "controlnet_txt2img": CustomStableDiffusionControlNetPipeline,
         "controlnet_img2img": CustomStableDiffusionControlNetImg2ImgPipeline,
     },
-    MODEL="Lykon/dreamshaper-8",
+    MODEL="XpucT/Deliberate",
     MODELS=[
         "cyberdelia/CyberRealistic",
         "fluently/Fluently-v4",

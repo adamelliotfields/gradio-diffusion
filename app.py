@@ -1,6 +1,4 @@
 import argparse
-import json
-import random
 
 import gradio as gr
 
@@ -11,6 +9,7 @@ from lib import (
     download_repo_files,
     generate,
     read_file,
+    read_json,
 )
 
 # Update refresh button hover text
@@ -41,7 +40,6 @@ aspect_ratio_js = """
 }
 """
 
-
 # Show "Custom" aspect ratio when manually changing width or height, or one of the predefined ones
 custom_aspect_ratio_js = """
 (w, h) => {
@@ -54,12 +52,13 @@ custom_aspect_ratio_js = """
 }
 """
 
-
-# Random prompt function
-async def random_fn():
-    prompts = read_file("data/prompts.json")
-    prompts = json.loads(prompts)
-    return gr.Textbox(value=random.choice(prompts))
+random_prompt_js = f"""
+(prompt) => {{
+    const prompts = {read_json("data/prompts.json")};
+    const filtered = prompts.filter(p => p !== prompt);
+    return filtered[Math.floor(Math.random() * filtered.length)];
+}}
+"""
 
 
 # Transform the raw inputs before generation
@@ -356,7 +355,7 @@ with gr.Blocks(
             gr.Markdown(read_file("DOCS.md"))
 
     # Random prompt on click
-    random_btn.click(random_fn, inputs=[], outputs=[prompt], show_api=False)
+    random_btn.click(None, inputs=[prompt], outputs=[prompt], js=random_prompt_js)
 
     # Update seed on click
     refresh_btn.click(None, inputs=[], outputs=[seed], js=refresh_seed_js)
