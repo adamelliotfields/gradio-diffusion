@@ -122,7 +122,6 @@ Config = SimpleNamespace(
         "canny": "lllyasviel/control_v11p_sd15_canny",
     },
     NEGATIVE_EMBEDDING="fast_negative",
-    STYLE="enhance",
     WIDTH=512,
     HEIGHT=512,
     NUM_IMAGES=1,

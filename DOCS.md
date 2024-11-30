@@ -6,18 +6,11 @@ TL;DR: Enter a prompt or roll the `🎲` and press `Generate`.
 
 Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel) for weighting. See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more.
 
+#### Weighting
+
 Use `+` or `-` to increase the weight of a token. The weight grows exponentially when chained. For example, `blue+` means 1.1x more attention is given to `blue`, while `blue++` means 1.1^2 more, and so on. The same applies to `-`.
 
 Groups of tokens can be weighted together by wrapping in parentheses and multiplying by a float between 0 and 2. For example, `(masterpiece, best quality)1.2` will increase the weight of both `masterpiece` and `best quality` by 1.2x.
-
-This is the same syntax used in [InvokeAI](https://invoke-ai.github.io/InvokeAI/features/PROMPTS/) and it differs from [A1111](https://github.com/AUTOMATIC1111/stable-diffusion-webui):
-
-| Compel      | A1111         |
-| ----------- | ------------- |
-| `blue++`    | `((blue))`    |
-| `blue--`    | `[[blue]]`    |
-| `(blue)1.2` | `(blue:1.2)`  |
-| `(blue)0.8` | `(blue:0.8)`  |
 
 ### Models
 
@@ -31,12 +24,6 @@ Some require specific parameters to get the best results, so check the model's l
 * [stable-diffusion-v1-5/stable-diffusion-v1-5](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5)
 * [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate)
 * [XpucT/Reliberate_v3](https://huggingface.co/XpucT/Reliberate)
-
-### Styles
-
-[Styles](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/data/styles.json) are prompt templates that wrap your positive and negative prompts. Inspired by [twri/sdxl_prompt_styler](https://github.com/twri/sdxl_prompt_styler).
-
-> 💡 When using syles, start with a simple prompt like `portrait of a cat` or `landscape of a mountain range`.
 
 ### Scale
 

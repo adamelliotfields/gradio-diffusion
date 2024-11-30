@@ -184,18 +184,8 @@ with gr.Blocks(
             with gr.Row():
                 negative_prompt = gr.Textbox(
                     label="Negative Prompt",
-                    value="nsfw+",
-                    min_width=320,
+                    value="nsfw",
                     lines=1,
-                )
-                styles = json.loads(read_file("data/styles.json"))
-                style_ids = list(styles.keys())
-                style_ids = [sid for sid in style_ids if not sid.startswith("_")]
-                style = gr.Dropdown(
-                    min_width=320,
-                    value=Config.STYLE,
-                    label="Style Template",
-                    choices=[("None", "none")] + [(styles[sid]["name"], sid) for sid in style_ids],
                 )
 
             # Model settings
@@ -430,7 +420,6 @@ with gr.Blocks(
             image_prompt,
             control_image_prompt,
             ip_image_prompt,
-            style,
             seed,
             model,
             scheduler,

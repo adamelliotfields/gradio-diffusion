@@ -14,32 +14,10 @@ from .logger import Logger
 from .utils import (
     annotate_image,
     clear_cuda_cache,
-    load_json,
     resize_image,
     safe_progress,
     timer,
 )
-
-
-# Inject prompts into style templates
-def apply_style(positive_prompt, negative_prompt, style_id="none"):
-    if style_id.lower() == "none":
-        return (positive_prompt, negative_prompt)
-
-    styles = load_json("./data/styles.json")
-    style = styles.get(style_id)
-    if style is None:
-        return (positive_prompt, negative_prompt)
-
-    style_base = styles.get("_base", {})
-    return (
-        style.get("positive")
-        .format(prompt=positive_prompt, _base=style_base.get("positive"))
-        .strip(),
-        style.get("negative")
-        .format(prompt=negative_prompt, _base=style_base.get("negative"))
-        .strip(),
-    )
 
 
 # Dynamic signature for the GPU duration function
@@ -66,7 +44,6 @@ def generate(
     image_prompt=None,
     control_image_prompt=None,
     ip_image_prompt=None,
-    style=None,
     seed=None,
     model="Lykon/dreamshaper-8",
     scheduler="DDIM",
@@ -88,7 +65,7 @@ def generate(
 ):
     start = time.perf_counter()
     log = Logger("generate")
-    log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}")
+    log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}...")
 
     if Config.ZERO_GPU:
         safe_progress(progress, 100, 100, "ZeroGPU init")
@@ -178,17 +155,12 @@ def generate(
     for i in range(num_images):
         try:
             generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
-            positive_styled, negative_styled = apply_style(positive_prompt, negative_prompt, style)
-
-            # User didn't provide a negative prompt
-            if negative_styled.startswith("(), "):
-                negative_styled = negative_styled[4:]
 
             if negative_embedding:
-                negative_styled += f", <{Config.NEGATIVE_EMBEDDING}>"
+                negative_prompt += f", <{Config.NEGATIVE_EMBEDDING}>"
 
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
-                [compel(positive_styled), compel(negative_styled)]
+                [compel(positive_prompt), compel(negative_prompt)]
             )
         except PromptParser.ParsingException:
             raise Error("Invalid prompt")
