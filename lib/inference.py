@@ -5,153 +5,112 @@ from datetime import datetime
 import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
-from huggingface_hub.utils import HFValidationError, RepositoryNotFoundError
-from spaces import GPU
+from gradio import Error, Info, Progress
+from spaces import GPU, config
 
-from .config import Config
-from .loader import Loader
+from .loader import get_loader
 from .logger import Logger
-from .utils import (
-    annotate_image,
-    clear_cuda_cache,
-    resize_image,
-    safe_progress,
-    timer,
-)
+from .utils import annotate_image, cuda_collect, resize_image, timer
 
 
-# Dynamic signature for the GPU duration function
-def gpu_duration(**kwargs):
-    loading = 20
-    duration = 10
-    width = kwargs.get("width", 512)
-    height = kwargs.get("height", 512)
-    scale = kwargs.get("scale", 1)
-    num_images = kwargs.get("num_images", 1)
-    size = width * height
-    if size > 500_000:
-        duration += 5
-    if scale == 4:
-        duration += 5
-    return loading + (duration * num_images)
-
-
-# Request GPU when deployed to Hugging Face
-@GPU(duration=gpu_duration)
+@GPU
 def generate(
-    positive_prompt,
+    positive_prompt="",
     negative_prompt="",
-    image_prompt=None,
-    control_image_prompt=None,
-    ip_image_prompt=None,
+    image_input=None,
+    controlnet_input=None,
+    ip_adapter_input=None,
     seed=None,
-    model="Lykon/dreamshaper-8",
-    scheduler="DDIM",
-    annotator="canny",
+    model="XpucT/Reliberate",
+    scheduler="UniPC",
+    controlnet_annotator="canny",
     width=512,
     height=512,
     guidance_scale=6.0,
     inference_steps=40,
     denoising_strength=0.8,
-    deepcache=1,
+    deepcache_interval=1,
     scale=1,
     num_images=1,
-    karras=False,
-    ip_face=False,
-    Error=Exception,
-    Info=None,
-    progress=None,
+    use_karras=False,
+    use_ip_adapter_face=False,
+    _=Progress(track_tqdm=True),
 ):
+    if not torch.cuda.is_available():
+        raise Error("CUDA not available")
+
+    if positive_prompt.strip() == "":
+        raise Error("You must enter a prompt")
+
     start = time.perf_counter()
     log = Logger("generate")
     log.info(f"Generating {num_images} image{'s' if num_images > 1 else ''}...")
 
-    if Config.ZERO_GPU:
-        safe_progress(progress, 100, 100, "ZeroGPU init")
-
-    if not torch.cuda.is_available():
-        raise Error("CUDA not available")
-
-    # https://pytorch.org/docs/stable/generated/torch.manual_seed.html
-    if seed is None or seed < 0:
-        seed = int(datetime.now().timestamp() * 1_000_000) % (2**64)
-
-    CURRENT_STEP = 0
-    CURRENT_IMAGE = 1
-
-    KIND = "img2img" if image_prompt is not None else "txt2img"
-    KIND = f"controlnet_{KIND}" if control_image_prompt is not None else KIND
+    KIND = "img2img" if image_input is not None else "txt2img"
+    KIND = f"controlnet_{KIND}" if controlnet_input is not None else KIND
 
     EMBEDDINGS_TYPE = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
 
     FAST_NEGATIVE = "<fast_negative>" in negative_prompt
 
-    if ip_image_prompt:
-        IP_ADAPTER = "full-face" if ip_face else "plus"
+    if ip_adapter_input:
+        IP_KIND = "full-face" if use_ip_adapter_face else "plus"
     else:
-        IP_ADAPTER = ""
+        IP_KIND = ""
 
-    # Custom progress bar for multiple images
-    def callback_on_step_end(pipeline, step, timestep, latents):
-        nonlocal CURRENT_STEP, CURRENT_IMAGE
-        if progress is not None:
-            # calculate total steps for img2img based on denoising strength
-            strength = denoising_strength if KIND == "img2img" else 1
-            total_steps = min(int(inference_steps * strength), inference_steps)
-            CURRENT_STEP = step + 1
-            progress(
-                (CURRENT_STEP, total_steps),
-                desc=f"Generating image {CURRENT_IMAGE}/{num_images}",
-            )
-        return latents
-
-    loader = Loader()
+    # ZeroGPU is serverless so you want ephemeral instances
+    # You want a singleton on localhost so the pipeline stays in memory
+    loader = get_loader(singleton=not config.Config.zero_gpu)
     loader.load(
         KIND,
-        IP_ADAPTER,
+        IP_KIND,
         model,
         scheduler,
-        annotator,
-        deepcache,
+        controlnet_annotator,
+        deepcache_interval,
         scale,
-        karras,
-        progress,
+        use_karras,
     )
 
-    if loader.pipe is None:
-        raise Error(f"Error loading {model}")
-
-    pipe = loader.pipe
+    pipeline = loader.pipeline
     upscaler = loader.upscaler
+
+    # Probably a typo in the config
+    if pipeline is None:
+        raise Error(f"Error loading {model}")
 
     # Load fast negative embedding
     if FAST_NEGATIVE:
         embeddings_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "embeddings")
         )
-        pipe.load_textual_inversion(
+        pipeline.load_textual_inversion(
             pretrained_model_name_or_path=f"{embeddings_dir}/fast_negative.pt",
             token="<fast_negative>",
         )
 
     # Embed prompts with weights
     compel = Compel(
-        device=pipe.device,
-        tokenizer=pipe.tokenizer,
+        device=pipeline.device,
+        tokenizer=pipeline.tokenizer,
         truncate_long_prompts=False,
-        text_encoder=pipe.text_encoder,
+        text_encoder=pipeline.text_encoder,
         returned_embeddings_type=EMBEDDINGS_TYPE,
-        dtype_for_device_getter=lambda _: pipe.dtype,
-        textual_inversion_manager=DiffusersTextualInversionManager(pipe),
+        dtype_for_device_getter=lambda _: pipeline.dtype,
+        textual_inversion_manager=DiffusersTextualInversionManager(pipeline),
     )
 
+    # https://pytorch.org/docs/stable/generated/torch.manual_seed.html
+    if seed is None or seed < 0:
+        seed = int(datetime.now().timestamp() * 1_000_000) % (2**64)
+
+    # Increment the seed after each iteration
     images = []
     current_seed = seed
-    safe_progress(progress, 0, num_images, f"Generating image 0/{num_images}")
 
     for i in range(num_images):
         try:
-            generator = torch.Generator(device=pipe.device).manual_seed(current_seed)
+            generator = torch.Generator(device=pipeline.device).manual_seed(current_seed)
             positive_embeds, negative_embeds = compel.pad_conditioning_tensors_to_same_length(
                 [compel(positive_prompt), compel(negative_prompt)]
             )
@@ -169,53 +128,44 @@ def generate(
             "output_type": "np" if scale > 1 else "pil",
         }
 
-        if progress is not None:
-            kwargs["callback_on_step_end"] = callback_on_step_end
-
-        # Resizing so the initial latents are the same size as the generated image
-        if KIND == "img2img":
+        if KIND == "img2img" or KIND == "controlnet_img2img":
             kwargs["strength"] = denoising_strength
-            kwargs["image"] = resize_image(image_prompt, (width, height))
+            kwargs["image"] = resize_image(image_input, (width, height))
 
         if KIND == "controlnet_txt2img":
-            kwargs["image"] = annotate_image(control_image_prompt, annotator)
+            kwargs["image"] = annotate_image(controlnet_input, controlnet_annotator)
 
         if KIND == "controlnet_img2img":
-            kwargs["control_image"] = annotate_image(control_image_prompt, annotator)
+            kwargs["control_image"] = annotate_image(controlnet_input, controlnet_annotator)
 
-        if IP_ADAPTER:
-            kwargs["ip_adapter_image"] = resize_image(ip_image_prompt)
+        if IP_KIND:
+            # No size means preserve aspect ratio
+            kwargs["ip_adapter_image"] = resize_image(ip_adapter_input)
 
         try:
-            image = pipe(**kwargs).images[0]
-            images.append((image, str(current_seed)))
+            image = pipeline(**kwargs).images[0]
+            images.append((image, str(current_seed)))  # tuple with seed for gallery caption
             current_seed += 1
         finally:
             if FAST_NEGATIVE:
-                pipe.unload_textual_inversion()
-
-            CURRENT_STEP = 0
-            CURRENT_IMAGE += 1
+                pipeline.unload_textual_inversion()
 
     # Upscale
     if scale > 1:
-        msg = f"Upscaling {scale}x"
-        with timer(msg, logger=log.info):
-            safe_progress(progress, 0, num_images, desc=msg)
+        with timer(f"Upscaling {num_images} images {scale}x", logger=log.info):
             for i, image in enumerate(images):
                 image = upscaler.predict(image[0])
-                images[i] = image
-                safe_progress(progress, i + 1, num_images, desc=msg)
-
-    # Flush memory after generating
-    clear_cuda_cache()
+                seed = images[i][1]
+                images[i] = (image, seed)  # tuple again
 
     end = time.perf_counter()
     msg = f"Generating {len(images)} image{'s' if len(images) > 1 else ''} took {end - start:.2f}s"
     log.info(msg)
 
-    # Alert if notifier provided
     if Info:
         Info(msg)
+
+    # Flush cache before returning
+    cuda_collect()
 
     return images
