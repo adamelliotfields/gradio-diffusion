@@ -16,10 +16,6 @@
   margin-right: 4px;
 }
 
-#embeddings .token {
-  border-radius: 4px;
-}
-
 .gallery {
   background-color: var(--bg);
 }
@@ -32,10 +28,6 @@
 .gallery, .gallery .grid-wrap {
   height: calc(100vh - 430px);
   max-height: none;
-}
-
-.gap-0, .gap-0 * {
-  gap: 0px;
 }
 
 .icon-button {
@@ -90,9 +82,6 @@
   content: 'Random prompt';
 }
 .popover#clear:hover::after {
-  content: 'Clear';
-}
-.popover#clear-control:hover::after {
   content: 'Clear';
 }
 .popover#refresh:hover::after {

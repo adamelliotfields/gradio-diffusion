@@ -1,12 +1,19 @@
 import argparse
+import os
+from importlib.util import find_spec
+
+# Improved GPU handling and progress bars
+os.environ["ZEROGPU_V2"] = "1"
+
+# Use Rust-based downloader
+if find_spec("hf_transfer"):
+    os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
 import gradio as gr
+from huggingface_hub._snapshot_download import snapshot_download
 
 from lib import (
     Config,
-    async_call,
-    disable_progress_bars,
-    download_repo_files,
     generate,
     read_file,
     read_json,
@@ -60,46 +67,6 @@ random_prompt_js = f"""
 }}
 """
 
-
-# Transform the raw inputs before generation
-async def generate_fn(*args, progress=gr.Progress(track_tqdm=True)):
-    if len(args) > 0:
-        prompt = args[0]
-    else:
-        prompt = None
-    if prompt is None or prompt.strip() == "":
-        raise gr.Error("You must enter a prompt")
-
-    # These are always the last arguments
-    DISABLE_IMAGE_PROMPT, DISABLE_CONTROL_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT = args[-3:]
-    gen_args = list(args[:-3])
-
-    # First two arguments are the prompt and negative prompt
-    if DISABLE_IMAGE_PROMPT:
-        gen_args[2] = None
-    if DISABLE_CONTROL_IMAGE_PROMPT:
-        gen_args[3] = None
-    if DISABLE_IP_IMAGE_PROMPT:
-        gen_args[4] = None
-
-    try:
-        if Config.ZERO_GPU:
-            progress((0, 100), desc="ZeroGPU init")
-
-        # Remaining arguments are the alert handlers and progress bar
-        images = await async_call(
-            generate,
-            *gen_args,
-            Error=gr.Error,
-            Info=gr.Info,
-            progress=progress,
-        )
-    except RuntimeError:
-        raise gr.Error("Error: Please try again")
-
-    return images
-
-
 with gr.Blocks(
     head=read_file("./partials/head.html"),
     css="./app.css",
@@ -114,8 +81,8 @@ with gr.Blocks(
         radius_size=gr.themes.sizes.radius_sm,
         spacing_size=gr.themes.sizes.spacing_md,
         # fonts
-        font=[gr.themes.GoogleFont("Inter"), *Config.SANS_FONTS],
-        font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), *Config.MONO_FONTS],
+        font=[gr.themes.GoogleFont("Inter"), "sans-serif"],
+        font_mono=[gr.themes.GoogleFont("Ubuntu Mono"), "monospace"],
     ).set(
         layout_gap="8px",
         block_shadow="0 0 #0000",
@@ -124,11 +91,6 @@ with gr.Blocks(
         block_background_fill_dark=gr.themes.colors.gray.c900,
     ),
 ) as demo:
-    # Disable image inputs without clearing them
-    DISABLE_IMAGE_PROMPT = gr.State(False)
-    DISABLE_IP_IMAGE_PROMPT = gr.State(False)
-    DISABLE_CONTROL_IMAGE_PROMPT = gr.State(False)
-
     gr.HTML(read_file("./partials/intro.html"))
 
     with gr.Tabs():
@@ -144,7 +106,7 @@ with gr.Blocks(
                     format="png",
                     columns=2,
                 )
-                prompt = gr.Textbox(
+                positive_prompt = gr.Textbox(
                     placeholder="What do you want to see?",
                     autoscroll=False,
                     show_label=False,
@@ -271,7 +233,7 @@ with gr.Blocks(
                     label="Scale",
                 )
                 seed = gr.Number(
-                    value=Config.SEED,
+                    value=-1,
                     label="Seed",
                     minimum=-1,
                     maximum=(2**64) - 1,
@@ -286,7 +248,7 @@ with gr.Blocks(
             # Image-to-Image settings
             gr.HTML("<h3>Image-to-Image</h3>")
             with gr.Row():
-                image_prompt = gr.Image(
+                image_input = gr.Image(
                     show_share_button=False,
                     label="Initial Image",
                     min_width=640,
@@ -294,14 +256,14 @@ with gr.Blocks(
                     type="pil",
                 )
             with gr.Row():
-                control_image_prompt = gr.Image(
+                controlnet_input = gr.Image(
                     show_share_button=False,
                     label="Control Image",
                     min_width=320,
                     format="png",
                     type="pil",
                 )
-                ip_image_prompt = gr.Image(
+                ip_adapter_input = gr.Image(
                     show_share_button=False,
                     label="IP-Adapter Image",
                     min_width=320,
@@ -316,7 +278,7 @@ with gr.Blocks(
                     maximum=1.0,
                     step=0.1,
                 )
-                control_annotator = gr.Dropdown(
+                controlnet_annotator = gr.Dropdown(
                     label="ControlNet Annotator",
                     # TODO: annotators should be in config with names
                     choices=[("Canny", "canny")],
@@ -324,22 +286,7 @@ with gr.Blocks(
                     filterable=False,
                 )
             with gr.Row():
-                disable_image = gr.Checkbox(
-                    label="Disable initial image",
-                    elem_classes=["checkbox"],
-                    value=False,
-                )
-                disable_control_image = gr.Checkbox(
-                    label="Disable ControlNet",
-                    elem_classes=["checkbox"],
-                    value=False,
-                )
-                disable_ip_image = gr.Checkbox(
-                    label="Disable IP-Adapter",
-                    elem_classes=["checkbox"],
-                    value=False,
-                )
-                use_ip_face = gr.Checkbox(
+                use_ip_adapter_face = gr.Checkbox(
                     label="Use IP-Adapter Face",
                     elem_classes=["checkbox"],
                     value=False,
@@ -349,7 +296,9 @@ with gr.Blocks(
             gr.Markdown(read_file("DOCS.md"))
 
     # Random prompt on click
-    random_btn.click(None, inputs=[prompt], outputs=[prompt], js=random_prompt_js)
+    random_btn.click(
+        None, inputs=[positive_prompt], outputs=[positive_prompt], js=random_prompt_js
+    )
 
     # Update seed on click
     refresh_btn.click(None, inputs=[], outputs=[seed], js=refresh_seed_js)
@@ -374,31 +323,22 @@ with gr.Blocks(
         js=custom_aspect_ratio_js,
     )
 
-    # Toggle image prompts by updating session state
-    gr.on(
-        triggers=[disable_image.input, disable_control_image.input, disable_ip_image.input],
-        fn=lambda image, control_image, ip_image: (image, control_image, ip_image),
-        inputs=[disable_image, disable_control_image, disable_ip_image],
-        outputs=[DISABLE_IMAGE_PROMPT, DISABLE_CONTROL_IMAGE_PROMPT, DISABLE_IP_IMAGE_PROMPT],
-        show_api=False,
-    )
-
     # Generate images
     gr.on(
-        triggers=[generate_btn.click, prompt.submit],
-        fn=generate_fn,
+        triggers=[generate_btn.click, positive_prompt.submit],
+        fn=generate,
         api_name="generate",
         outputs=[output_images],
         inputs=[
-            prompt,
+            positive_prompt,
             negative_prompt,
-            image_prompt,
-            control_image_prompt,
-            ip_image_prompt,
+            image_input,
+            controlnet_input,
+            ip_adapter_input,
             seed,
             model,
             scheduler,
-            control_annotator,
+            controlnet_annotator,
             width,
             height,
             guidance_scale,
@@ -408,10 +348,7 @@ with gr.Blocks(
             scale,
             num_images,
             use_karras,
-            use_ip_face,
-            DISABLE_IMAGE_PROMPT,
-            DISABLE_CONTROL_IMAGE_PROMPT,
-            DISABLE_IP_IMAGE_PROMPT,
+            use_ip_adapter_face,
         ],
     )
 
@@ -421,9 +358,16 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--port", type=int, metavar="INT", default=7860)
     args = parser.parse_args()
 
-    disable_progress_bars()
-    for repo_id, allow_patterns in Config.HF_MODELS.items():
-        download_repo_files(repo_id, allow_patterns, token=Config.HF_TOKEN)
+    token = os.environ.get("HF_TOKEN", None)
+    for repo_id, allow_patterns in Config.HF_REPOS.items():
+        snapshot_download(
+            repo_id,
+            repo_type="model",
+            revision="main",
+            token=token,
+            allow_patterns=allow_patterns,
+            ignore_patterns=None,
+        )
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
     demo.queue(default_concurrency_limit=1).launch(

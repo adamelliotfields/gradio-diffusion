@@ -1,18 +1,14 @@
 import functools
-import inspect
 import json
 import os
 import time
 from contextlib import contextmanager
-from typing import Callable, Tuple, TypeVar
+from typing import Tuple, TypeVar
 
-import anyio
 import numpy as np
 import torch
 from anyio import Semaphore
 from diffusers.utils import logging as diffusers_logging
-from huggingface_hub._snapshot_download import snapshot_download
-from huggingface_hub.utils import are_progress_bars_disabled
 from PIL import Image
 from transformers import logging as transformers_logging
 from typing_extensions import ParamSpec
@@ -61,33 +57,12 @@ def enable_progress_bars():
     diffusers_logging.enable_progress_bar()
 
 
-def safe_progress(progress, current=0, total=0, desc=""):
-    if progress is not None:
-        progress((current, total), desc=desc)
-
-
-def clear_cuda_cache():
+def cuda_collect():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.synchronize()
-
-
-def download_repo_files(repo_id, allow_patterns, token=None):
-    was_disabled = are_progress_bars_disabled()
-    enable_progress_bars()
-    snapshot_path = snapshot_download(
-        repo_id=repo_id,
-        repo_type="model",
-        revision="main",
-        token=token,
-        allow_patterns=allow_patterns,
-        ignore_patterns=None,
-    )
-    if was_disabled:
-        disable_progress_bars()
-    return snapshot_path
 
 
 def image_to_pil(image: Image.Image):
@@ -159,14 +134,3 @@ def annotate_image(image: Image.Image, annotator="canny"):
         canny = CannyAnnotator()
         return canny(image, size)
     raise ValueError(f"Invalid annotator: {annotator}")
-
-
-# Like the original but supports args and kwargs instead of a dict
-# https://github.com/huggingface/huggingface-inference-toolkit/blob/0.2.0/src/huggingface_inference_toolkit/async_utils.py
-async def async_call(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
-    async with MAX_THREADS_GUARD:
-        sig = inspect.signature(fn)
-        bound_args = sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
-        partial_fn = functools.partial(fn, **bound_args.arguments)
-        return await anyio.to_thread.run_sync(partial_fn)
