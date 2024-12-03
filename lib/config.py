@@ -1,34 +1,19 @@
-import os
-from importlib import import_module
-from importlib.util import find_spec
 from types import SimpleNamespace
 from warnings import filterwarnings
 
 from diffusers import (
-    DDIMScheduler,
     DEISMultistepScheduler,
     DPMSolverMultistepScheduler,
     EulerAncestralDiscreteScheduler,
     EulerDiscreteScheduler,
-    PNDMScheduler,
+    StableDiffusionControlNetImg2ImgPipeline,
+    StableDiffusionControlNetPipeline,
+    StableDiffusionImg2ImgPipeline,
+    StableDiffusionPipeline,
     UniPCMultistepScheduler,
 )
 from diffusers.utils import logging as diffusers_logging
 from transformers import logging as transformers_logging
-
-from .pipelines import (
-    CustomStableDiffusionControlNetImg2ImgPipeline,
-    CustomStableDiffusionControlNetPipeline,
-    CustomStableDiffusionImg2ImgPipeline,
-    CustomStableDiffusionPipeline,
-)
-
-# Improved GPU handling and progress bars; set before importing spaces
-os.environ["ZEROGPU_V2"] = "1"
-
-# Errors if enabled and not installed
-if find_spec("hf_transfer"):
-    os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
 filterwarnings("ignore", category=FutureWarning, module="diffusers")
 filterwarnings("ignore", category=FutureWarning, module="transformers")
@@ -37,7 +22,7 @@ diffusers_logging.set_verbosity_error()
 transformers_logging.set_verbosity_error()
 
 # Standard Stable Diffusion 1.5 file structure
-sd_files = [
+_sd_files = [
     "feature_extractor/preprocessor_config.json",
     "safety_checker/config.json",
     "scheduler/scheduler_config.json",
@@ -56,35 +41,28 @@ sd_files = [
 
 # Using namespace instead of dataclass for simplicity
 Config = SimpleNamespace(
-    HF_TOKEN=os.environ.get("HF_TOKEN", None),
-    ZERO_GPU=import_module("spaces").config.Config.zero_gpu,
-    # TODO: fix model config redundancy
-    HF_MODELS={
-        # downloaded on startup
+    PIPELINES={
+        "txt2img": StableDiffusionPipeline,
+        "img2img": StableDiffusionImg2ImgPipeline,
+        "controlnet_txt2img": StableDiffusionControlNetPipeline,
+        "controlnet_img2img": StableDiffusionControlNetImg2ImgPipeline,
+    },
+    HF_REPOS={
         "ai-forever/Real-ESRGAN": ["RealESRGAN_x2.pth", "RealESRGAN_x4.pth"],
         "cyberdelia/CyberRealistic": ["CyberRealistic_V5_FP16.safetensors"],
         "fluently/Fluently-v4": ["Fluently-v4.safetensors"],
+        "h94/IP-Adapter": [
+            "models/ip-adapter-full-face_sd15.safetensors",
+            "models/ip-adapter-plus_sd15.safetensors",
+            "models/image_encoder/model.safetensors",
+        ],
         "lllyasviel/control_v11p_sd15_canny": ["diffusion_pytorch_model.fp16.safetensors"],
-        "Lykon/dreamshaper-8": [*sd_files],
+        "Lykon/dreamshaper-8": _sd_files,
         "s6yx/ReV_Animated": ["rev_1.2.2/rev_1.2.2-fp16.safetensors"],
         "SG161222/Realistic_Vision_V5.1_noVAE": ["Realistic_Vision_V5.1_fp16-no-ema.safetensors"],
-        "stable-diffusion-v1-5/stable-diffusion-v1-5": [*sd_files],
+        "stable-diffusion-v1-5/stable-diffusion-v1-5": _sd_files,
         "XpucT/Deliberate": ["Deliberate_v6.safetensors"],
         "XpucT/Reliberate": ["Reliberate_v3.safetensors"],
-    },
-    MONO_FONTS=["monospace"],
-    SANS_FONTS=[
-        "sans-serif",
-        "Apple Color Emoji",
-        "Segoe UI Emoji",
-        "Segoe UI Symbol",
-        "Noto Color Emoji",
-    ],
-    PIPELINES={
-        "txt2img": CustomStableDiffusionPipeline,
-        "img2img": CustomStableDiffusionImg2ImgPipeline,
-        "controlnet_txt2img": CustomStableDiffusionControlNetPipeline,
-        "controlnet_img2img": CustomStableDiffusionControlNetImg2ImgPipeline,
     },
     MODEL="XpucT/Reliberate",
     MODELS=[
@@ -97,25 +75,21 @@ Config = SimpleNamespace(
         "XpucT/Deliberate",
         "XpucT/Reliberate",
     ],
-    # Single-file model weights
-    MODEL_CHECKPOINTS={
-        # keep keys lowercase for case-insensitive matching in the loader
-        "cyberdelia/cyberrealistic": "CyberRealistic_V5_FP16.safetensors",
-        "fluently/fluently-v4": "Fluently-v4.safetensors",
-        "s6yx/rev_animated": "rev_1.2.2/rev_1.2.2-fp16.safetensors",
-        "sg161222/realistic_vision_v5.1_novae": "Realistic_Vision_V5.1_fp16-no-ema.safetensors",
-        "xpuct/deliberate": "Deliberate_v6.safetensors",
-        "xpuct/reliberate": "Reliberate_v3.safetensors",
-    },
-    SCHEDULER="UniPC 2M",
+    SINGLE_FILE_MODELS=[
+        "cyberdelia/CyberRealistic",
+        "fluently/Fluently-v4",
+        "s6yx/ReV_Animated",
+        "SG161222/Realistic_Vision_V5.1_noVAE",
+        "XpucT/Deliberate",
+        "XpucT/Reliberate",
+    ],
+    SCHEDULER="UniPC",
     SCHEDULERS={
-        "DDIM": DDIMScheduler,
-        "DEIS 2M": DEISMultistepScheduler,
+        "DEIS": DEISMultistepScheduler,
         "DPM++ 2M": DPMSolverMultistepScheduler,
         "Euler": EulerDiscreteScheduler,
         "Euler a": EulerAncestralDiscreteScheduler,
-        "PNDM": PNDMScheduler,
-        "UniPC 2M": UniPCMultistepScheduler,
+        "UniPC": UniPCMultistepScheduler,
     },
     ANNOTATOR="canny",
     ANNOTATORS={
@@ -124,7 +98,6 @@ Config = SimpleNamespace(
     WIDTH=512,
     HEIGHT=512,
     NUM_IMAGES=1,
-    SEED=-1,
     GUIDANCE_SCALE=6,
     INFERENCE_STEPS=40,
     DENOISING_STRENGTH=0.8,
