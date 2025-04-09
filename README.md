@@ -1,102 +1,81 @@
----
-# https://huggingface.co/docs/hub/en/spaces-config-reference
-title: Diffusion
-short_description: Image generation studio for SD 1.5
-emoji: 🧨
-colorFrom: purple
-colorTo: blue
-sdk: gradio
-sdk_version: 4.44.1
-python_version: 3.11.9
-app_file: app.py
-fullWidth: false
-pinned: true
-header: mini
-license: apache-2.0
-models:
-- ai-forever/Real-ESRGAN
-- cyberdelia/CyberRealistic
-- fluently/Fluently-v4
-- h94/IP-Adapter
-- Lykon/dreamshaper-8
-- s6yx/ReV_Animated
-- SG161222/Realistic_Vision_V5.1_noVAE
-- stable-diffusion-v1-5/stable-diffusion-v1-5
-- XpucT/Deliberate
-- XpucT/Reliberate
-preload_from_hub:  # up to 10
-- >-
-  cyberdelia/CyberRealistic
-  CyberRealistic_V5_FP16.safetensors
-- >-
-  fluently/Fluently-v4
-  Fluently-v4.safetensors
-- >-
-  h94/IP-Adapter
-  models/ip-adapter-full-face_sd15.safetensors,models/ip-adapter-plus_sd15.safetensors,models/image_encoder/model.safetensors
-- >-
-  lllyasviel/control_v11p_sd15_canny
-  diffusion_pytorch_model.fp16.safetensors
-- >-
-  Lykon/dreamshaper-8
-  feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
-- >-
-  s6yx/ReV_Animated
-  rev_1.2.2/rev_1.2.2-fp16.safetensors
-- >-
-  SG161222/Realistic_Vision_V5.1_noVAE
-  Realistic_Vision_V5.1_fp16-no-ema.safetensors
-- >-
-  stable-diffusion-v1-5/stable-diffusion-v1-5
-  feature_extractor/preprocessor_config.json,safety_checker/config.json,scheduler/scheduler_config.json,text_encoder/config.json,text_encoder/model.fp16.safetensors,tokenizer/merges.txt,tokenizer/special_tokens_map.json,tokenizer/tokenizer_config.json,tokenizer/vocab.json,unet/config.json,unet/diffusion_pytorch_model.fp16.safetensors,vae/config.json,vae/diffusion_pytorch_model.fp16.safetensors,model_index.json
-- >-
-  XpucT/Deliberate
-  Deliberate_v6.safetensors
-- >-
-  XpucT/Reliberate
-  Reliberate_v3.safetensors
----
-
-# diffusion
+# gradio-diffusion
 
 Gradio app for Stable Diffusion 1.5 featuring:
 * txt2img and img2img pipelines with IP-Adapter
-* ControlNet with Canny edge detection (more preprocessors coming soon)
-* Compel prompt weighting and blending
+* ControlNet with Canny edge detection
+* FastNegative textual inversion
+* Real-ESRGAN resizing up to 8x
+* Compel prompt weighting support
 * Multiple samplers with Karras scheduling
-* DeepCache available
-* Real-ESRGAN upscaling
-
-## Usage
-
-See [`DOCS.md`](https://huggingface.co/spaces/adamelliotfields/diffusion/blob/main/DOCS.md).
+* DeepCache available for faster inference
 
 ## Installation
 
 ```bash
-# clone
-git clone https://huggingface.co/spaces/adamelliotfields/diffusion.git
-cd diffusion
-git remote set-url origin https://adamelliotfields:$HF_TOKEN@huggingface.co/spaces/adamelliotfields/diffusion
-
-# install
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# gradio
-python app.py --port 7860
+uv venv
+uv pip install -r requirements.txt
+uv run app.py
 ```
 
-## Development
+## Usage
 
-See [pull requests and discussions](https://huggingface.co/docs/hub/en/repositories-pull-requests-discussions).
+Enter a prompt or roll the `🎲` and press `Generate`.
 
-```sh
-git fetch origin refs/pr/42:pr/42
-git checkout pr/42
-# ...
-git add .
-git commit -m "Commit message"
-git push origin pr/42:refs/pr/42
-```
+### Prompting
+
+Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel). See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more.
+
+### Models
+
+Some require specific parameters to get the best results, so check the model's link for more information:
+
+* [cyberdelia/CyberRealistic_V5](https://huggingface.co/cyberdelia/CyberRealistic)
+* [fluently/Fluently-v4](https://huggingface.co/fluently/Fluently-v4)
+* [Lykon/dreamshaper-8](https://huggingface.co/Lykon/dreamshaper-8)
+* [s6yx/ReV_Animated](https://huggingface.co/s6yx/ReV_Animated)
+* [SG161222/Realistic_Vision_V5](https://huggingface.co/SG161222/Realistic_Vision_V5.1_noVAE)
+* [stable-diffusion-v1-5/stable-diffusion-v1-5](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5)
+* [XpucT/Deliberate_v6](https://huggingface.co/XpucT/Deliberate)
+* [XpucT/Reliberate_v3](https://huggingface.co/XpucT/Reliberate) (default)
+
+### Scale
+
+Rescale up to 8x using [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) with weights from [ai-forever](ai-forever/Real-ESRGAN).
+
+### Image-to-Image
+
+The `Image-to-Image` settings allows you to provide input images for the initial latent, ControlNet, and IP-Adapter.
+
+#### Strength
+
+Initial image strength (known as _denoising strength_) is essentially how much the generation will differ from the input image. A value of `0` will be identical to the original, while `1` will be a completely new image. You may want to also increase the number of inference steps.
+
+Note that denoising strength only applies to the `Initial Image` input; it doesn't affect ControlNet or IP-Adapter.
+
+#### ControlNet
+
+In [ControlNet](https://github.com/lllyasviel/ControlNet), the input image is used to get a feature map from an _annotator_. These are computer vision models used for tasks like edge detection and pose estimation. ControlNet models are trained to understand these feature maps. Read the [docs](https://huggingface.co/docs/diffusers/using-diffusers/controlnet) to learn more.
+
+Currently, the only annotator available is [Canny](https://huggingface.co/lllyasviel/control_v11p_sd15_canny) (edge detection).
+
+#### IP-Adapter
+
+In an image-to-image pipeline, the input image is used as the initial latent representation. With [IP-Adapter](https://github.com/tencent-ailab/IP-Adapter), the image is processed by a separate image encoder and the encoded features are used as conditioning along with the text prompt.
+
+For capturing faces, enable `IP-Adapter Face` to use the full-face model. You should use an input image that is mostly a face and it should be high quality.
+
+### Advanced
+
+#### Textual Inversion
+
+Add `<fast_negative>` anywhere in your negative prompt to apply the [FastNegative v2](https://civitai.com/models/71961?modelVersionId=94057) textual inversion embedding. Read [An Image is Worth One Word](https://huggingface.co/papers/2208.01618) to learn more.
+
+> 💡 Wrap in parens to weight the embedding like `(<fast_negative>)0.8`.
+
+#### DeepCache
+
+[DeepCache](https://github.com/horseee/DeepCache) caches lower UNet layers and reuses them every _n_ steps. Trade quality for speed:
+- *1*: no caching (default)
+- *2*: more quality
+- *3*: balanced
+- *4*: more speed
