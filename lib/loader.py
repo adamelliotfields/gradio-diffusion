@@ -12,11 +12,10 @@ from .utils import timer
 class Loader:
     """
     A lazy-loading resource manager for Stable Diffusion pipelines. Lifecycles are managed by
-    comparing the current state with desired. Can be used as a singleton when created by the
-    `get_loader()` helper.
+    comparing the current state with desired. Used as a singleton when created by `get_loader()`.
 
     Usage:
-        loader = get_loader(singleton=True)
+        loader = get_loader()
         loader.load(
             pipeline_id="controlnet_txt2img",
             ip_adapter_model="full-face",
@@ -172,7 +171,7 @@ class Loader:
     def load_upscaler(self, scale=1):
         with timer(f"Loading {scale}x upscaler", logger=self.log.info):
             self.upscaler = RealESRGAN(scale, device=self.pipeline.device)
-            self.upscaler.load_weights()
+            self.upscaler.load()
 
     def load_deepcache(self, cache_interval=1):
         self.log.info(f"Enabling DeepCache interval {cache_interval}")
@@ -307,12 +306,9 @@ class Loader:
             self.load_upscaler(scale)
 
 
-# Get a singleton or a new instance of the Loader
-def get_loader(singleton=False):
-    if not singleton:
-        return Loader()
-    else:
-        if not hasattr(get_loader, "_instance"):
-            get_loader._instance = Loader()
-        assert isinstance(get_loader._instance, Loader)
-        return get_loader._instance
+# Get a singleton of the Loader
+def get_loader():
+    if not hasattr(get_loader, "_instance"):
+        get_loader._instance = Loader()
+    assert isinstance(get_loader._instance, Loader)
+    return get_loader._instance

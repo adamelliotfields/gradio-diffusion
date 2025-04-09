@@ -6,14 +6,12 @@ import torch
 from compel import Compel, DiffusersTextualInversionManager, ReturnedEmbeddingsType
 from compel.prompt_parser import PromptParser
 from gradio import Error, Info, Progress
-from spaces import GPU, config
 
 from .loader import get_loader
 from .logger import Logger
 from .utils import annotate_image, cuda_collect, resize_image, timer
 
 
-@GPU
 def generate(
     positive_prompt="",
     negative_prompt="",
@@ -58,9 +56,7 @@ def generate(
     else:
         IP_KIND = ""
 
-    # ZeroGPU is serverless so you want ephemeral instances
-    # You want a singleton on localhost so the pipeline stays in memory
-    loader = get_loader(singleton=not config.Config.zero_gpu)
+    loader = get_loader()
     loader.load(
         KIND,
         IP_KIND,
@@ -139,12 +135,11 @@ def generate(
             kwargs["control_image"] = annotate_image(controlnet_input, controlnet_annotator)
 
         if IP_KIND:
-            # No size means preserve aspect ratio
             kwargs["ip_adapter_image"] = resize_image(ip_adapter_input)
 
         try:
             image = pipeline(**kwargs).images[0]
-            images.append((image, str(current_seed)))  # tuple with seed for gallery caption
+            images.append((image, str(current_seed)))  # seed is the caption
             current_seed += 1
         finally:
             if FAST_NEGATIVE:
@@ -167,5 +162,4 @@ def generate(
 
     # Flush cache before returning
     cuda_collect()
-
     return images

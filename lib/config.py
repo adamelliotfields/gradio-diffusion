@@ -48,7 +48,7 @@ Config = SimpleNamespace(
         "controlnet_img2img": StableDiffusionControlNetImg2ImgPipeline,
     },
     HF_REPOS={
-        "ai-forever/Real-ESRGAN": ["RealESRGAN_x2.pth", "RealESRGAN_x4.pth"],
+        "ai-forever/Real-ESRGAN": ["RealESRGAN_x2.pth", "RealESRGAN_x4.pth", "RealESRGAN_x8.pth"],
         "cyberdelia/CyberRealistic": ["CyberRealistic_V5_FP16.safetensors"],
         "fluently/Fluently-v4": ["Fluently-v4.safetensors"],
         "h94/IP-Adapter": [
@@ -103,5 +103,5 @@ Config = SimpleNamespace(
     DENOISING_STRENGTH=0.8,
     DEEPCACHE_INTERVAL=1,
     SCALE=1,
-    SCALES=[1, 2, 4],
+    SCALES=[1, 2, 4, 8],
 )
