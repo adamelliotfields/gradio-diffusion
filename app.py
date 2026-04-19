@@ -8,7 +8,6 @@ if find_spec("hf_transfer"):
 
 import gradio as gr
 
-# from huggingface_hub._snapshot_download import snapshot_download
 from lib import Config, generate, read_json
 
 # Update refresh button hover text
@@ -162,7 +161,7 @@ with gr.Blocks(
             with gr.Row():
                 negative_prompt = gr.Textbox(
                     label="Negative Prompt",
-                    value="nsfw, <fast_negative>",
+                    value="<fast_negative>",
                     lines=1,
                 )
 
@@ -371,21 +370,9 @@ with gr.Blocks(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    parser.add_argument("-s", "--server", type=str, metavar="STR", default="127.0.0.1")
+    parser.add_argument("-s", "--server", type=str, metavar="STR", default="0.0.0.0")
     parser.add_argument("-p", "--port", type=int, metavar="INT", default=7860)
     args = parser.parse_args()
-
-    # Download all models from Hugging Face
-    # token = os.environ.get("HF_TOKEN", None)
-    # for repo_id, allow_patterns in Config.HF_REPOS.items():
-    #     snapshot_download(
-    #         repo_id,
-    #         repo_type="model",
-    #         revision="main",
-    #         token=token,
-    #         allow_patterns=allow_patterns,
-    #         ignore_patterns=None,
-    #     )
 
     # https://www.gradio.app/docs/gradio/interface#interface-queue
     demo.queue(default_concurrency_limit=1).launch(
