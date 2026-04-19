@@ -21,6 +21,10 @@ uv run app.py
 
 Enter a prompt or roll the `🎲` and press `Generate`.
 
+### AMD
+
+You must `export TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1`.
+
 ### Prompting
 
 Positive and negative prompts are embedded by [Compel](https://github.com/damian0815/compel). See [syntax features](https://github.com/damian0815/compel/blob/main/doc/syntax.md) to learn more.
