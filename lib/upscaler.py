@@ -27,7 +27,6 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import einops
 import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
@@ -172,13 +171,14 @@ def make_layer(basic_block, num_basic_block, **kwarg):
 
 
 def pixel_unshuffle(x, scale):
-    _, _, h, w = x.shape
+    b, c, h, w = x.shape
     assert h % scale == 0 and w % scale == 0, "Height and width must be divisible by scale"
-    return einops.rearrange(
-        x,
-        "b c (h s1) (w s2) -> b (c s1 s2) h w",
-        s1=scale,
-        s2=scale,
+    out_h, out_w = h // scale, w // scale
+    # b c (h s1) (w s2) -> b (c s1 s2) h w
+    return (
+        x.reshape(b, c, out_h, scale, out_w, scale)
+        .permute(0, 1, 3, 5, 2, 4)
+        .reshape(b, c * scale * scale, out_h, out_w)
     )
 
 
@@ -298,7 +298,8 @@ class RealESRGAN:
             padding_size=padding,
         )
         patches = torch.Tensor(patches / 255.0)
-        image = einops.rearrange(patches, "b h w c -> b c h w").to(device=self.device)
+        # b h w c -> b c h w
+        image = patches.permute(0, 3, 1, 2).contiguous().to(device=self.device)
 
         with torch.inference_mode():
             res = self.model(image[0:batch_size])
@@ -306,7 +307,8 @@ class RealESRGAN:
                 res = torch.cat((res, self.model(image[i : i + batch_size])), 0)
 
         scale = self.scale
-        sr_image = einops.rearrange(res.clamp(0, 1), "b c h w -> b h w c").cpu().numpy()
+        # b c h w -> b h w c
+        sr_image = res.clamp(0, 1).permute(0, 2, 3, 1).cpu().numpy()
         padded_size_scaled = tuple(np.multiply(p_shape[0:2], scale)) + (3,)
         scaled_image_shape = tuple(np.multiply(lr_image.shape[0:2], scale)) + (3,)
         sr_image = stitch_together(
