@@ -1,16 +1,14 @@
 accelerate
 compel==2.0.3
-controlnet-aux==0.0.9
 deepcache==0.1.1
-diffusers==0.30.3
-einops==0.8.0
+diffusers==0.37.1
 gradio==4.44.1
+pydantic<2.11  # for gradio
+starlette<1  # for gradio
 hf-transfer
-mediapipe
-numpy==1.26.4
 opencv-contrib-python
-pydantic==2.10.6
-ruff==0.6.9
-torch==2.4.1
-torchaudio==2.4.1
-torchvision==0.19.1
+ruff
+torch==2.10.0
+torchaudio==2.10.0
+torchvision==0.25.0
+triton==3.6.0
